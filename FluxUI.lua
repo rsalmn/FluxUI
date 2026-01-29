@@ -1629,12 +1629,15 @@ function FluxUI:CreateWindow(config)
                 end,
                 Refresh = function(newOptions)
                     options = newOptions
+                    
+                    -- Destroy old option buttons
                     for _, child in ipairs(OptionsList:GetChildren()) do
                         if child:IsA("TextButton") then
                             child:Destroy()
                         end
                     end
                     
+                    -- Create new option buttons
                     for _, option in ipairs(options) do
                         local OptionButton = Instance.new("TextButton")
                         OptionButton.Size = UDim2.new(1, 0, 0, 30)
@@ -1644,6 +1647,7 @@ function FluxUI:CreateWindow(config)
                         OptionButton.TextColor3 = Colors.Text
                         OptionButton.TextSize = 13
                         OptionButton.Font = Enum.Font.Gotham
+                        OptionButton.ZIndex = 6
                         OptionButton.Parent = OptionsList
                         
                         local OptionCorner = Instance.new("UICorner")
@@ -1664,9 +1668,34 @@ function FluxUI:CreateWindow(config)
                                 ConfigSystem.CurrentConfig[flag] = option
                             end
                         end)
+                        
+                        -- Add hover effects (FIXED!)
+                        OptionButton.MouseEnter:Connect(function()
+                            Tween(OptionButton, {BackgroundColor3 = Colors.Accent}, 0.2)
+                        end)
+                        
+                        OptionButton.MouseLeave:Connect(function()
+                            Tween(OptionButton, {BackgroundColor3 = Colors.Background}, 0.2)
+                        end)
                     end
                     
+                    -- Update OptionsList size
                     OptionsList.Size = UDim2.new(1, -10, 0, #options * 35)
+                    
+                    -- Update DropdownFrame size if currently open (FIXED!)
+                    if isOpen then
+                        Tween(DropdownFrame, {Size = UDim2.new(1, 0, 0, 50 + #options * 35)}, 0.3)
+                    end
+                    
+                    -- Reset label if current option not in new options
+                    if not table.find(options, currentOption) then
+                        currentOption = options[1] or "Select"
+                        DropdownLabel.Text = dropdownText .. ": " .. currentOption
+                    end
+                end,
+                SetOptions = function(newOptions)
+                    -- Alias for Refresh (untuk konsistensi dengan Collapsible)
+                    dropdownObj.Refresh(newOptions)
                 end
             }
             
@@ -2342,12 +2371,15 @@ function FluxUI:CreateWindow(config)
                     end,
                     SetOptions = function(newOptions)
                         options = newOptions
+                        
+                        -- Destroy old option buttons
                         for _, child in ipairs(OptionsList:GetChildren()) do
                             if child:IsA("TextButton") then
                                 child:Destroy()
                             end
                         end
                         
+                        -- Create new option buttons
                         for _, option in ipairs(options) do
                             local OptionButton = Instance.new("TextButton")
                             OptionButton.Size = UDim2.new(1, 0, 0, 25)
@@ -2370,10 +2402,35 @@ function FluxUI:CreateWindow(config)
                                 Tween(DropdownFrame, {Size = UDim2.new(1, 0, 0, 35)}, 0.3)
                                 Tween(DropdownIcon, {Rotation = 0}, 0.3)
                                 SafeCallback(callback, option)
+                                
+                                if flag and ConfigSystem.CurrentConfig then
+                                    ConfigSystem.CurrentConfig[flag] = option
+                                end
+                            end)
+                            
+                            -- Add hover effects (FIXED!)
+                            OptionButton.MouseEnter:Connect(function()
+                                Tween(OptionButton, {BackgroundColor3 = Colors.Accent}, 0.2)
+                            end)
+                            
+                            OptionButton.MouseLeave:Connect(function()
+                                Tween(OptionButton, {BackgroundColor3 = Colors.Tertiary}, 0.2)
                             end)
                         end
                         
+                        -- Update OptionsList size
                         OptionsList.Size = UDim2.new(1, -10, 0, #options * 28)
+                        
+                        -- Update DropdownFrame size if currently open (FIXED!)
+                        if isOpen then
+                            Tween(DropdownFrame, {Size = UDim2.new(1, 0, 0, 42 + #options * 28)}, 0.3)
+                        end
+                        
+                        -- Reset label if current option not in new options
+                        if not table.find(options, currentOption) then
+                            currentOption = options[1] or "Select"
+                            DropdownLabel.Text = dropdownText .. ": " .. currentOption
+                        end
                     end
                 }
                 
