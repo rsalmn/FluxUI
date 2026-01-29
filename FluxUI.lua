@@ -2911,6 +2911,44 @@ function FluxUI:CreateWindow(config)
                 }
             end
             
+            -- ═══════════════════════════════════════════
+            -- COLLAPSIBLE: AddSection
+            -- ═══════════════════════════════════════════
+            function Collapsible:AddSection(sectionName)
+                local SectionFrame = Instance.new("Frame")
+                SectionFrame.Size = UDim2.new(1, 0, 0, 28)
+                SectionFrame.BackgroundTransparency = 1
+                SectionFrame.Parent = ContentFrame
+                
+                local SectionLabel = Instance.new("TextLabel")
+                SectionLabel.Size = UDim2.new(1, -5, 0, 18)
+                SectionLabel.Position = UDim2.new(0, 0, 0, 2)
+                SectionLabel.BackgroundTransparency = 1
+                SectionLabel.Text = sectionName
+                SectionLabel.TextColor3 = Colors.Text
+                SectionLabel.TextSize = 12
+                SectionLabel.Font = Enum.Font.GothamBold
+                SectionLabel.TextXAlignment = Enum.TextXAlignment.Left
+                SectionLabel.Parent = SectionFrame
+                
+                local SectionLine = Instance.new("Frame")
+                SectionLine.Size = UDim2.new(1, 0, 0, 2)
+                SectionLine.Position = UDim2.new(0, 0, 1, -4)
+                SectionLine.BackgroundColor3 = Colors.Accent
+                SectionLine.BorderSizePixel = 0
+                SectionLine.Parent = SectionFrame
+                
+                local SectionLineCorner = Instance.new("UICorner")
+                SectionLineCorner.CornerRadius = UDim.new(1, 0)
+                SectionLineCorner.Parent = SectionLine
+                
+                return {
+                    SetText = function(newText)
+                        SectionLabel.Text = newText
+                    end
+                }
+            end
+            
             return Collapsible
         end
         
