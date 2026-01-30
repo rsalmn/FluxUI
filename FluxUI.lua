@@ -3616,6 +3616,458 @@ function FluxUI:CreateWindow(config)
                 }
             end
             
+            -- ═══════════════════════════════════════════
+            -- COLLAPSIBLE: AddSearchDropdown
+            -- ═══════════════════════════════════════════
+            function Collapsible:AddSearchDropdown(config)
+                config = config or {}
+                local dropdownText = config.Name or "Search Dropdown"
+                local options = config.Options or {"Option 1", "Option 2", "Option 3"}
+                local default = config.Default or ""
+                local placeholder = config.Placeholder or "Search..."
+                local callback = config.Callback or function() end
+                local flag = config.Flag
+                
+                local DropdownFrame = Instance.new("Frame")
+                DropdownFrame.Size = UDim2.new(1, 0, 0, 65)
+                DropdownFrame.BackgroundColor3 = Colors.Background
+                DropdownFrame.BorderSizePixel = 0
+                DropdownFrame.ClipsDescendants = true
+                DropdownFrame.Parent = ContentFrame
+                
+                local DropdownCorner = Instance.new("UICorner")
+                DropdownCorner.CornerRadius = UDim.new(0, 6)
+                DropdownCorner.Parent = DropdownFrame
+                
+                -- Label
+                local DropdownLabel = Instance.new("TextLabel")
+                DropdownLabel.Size = UDim2.new(1, -20, 0, 20)
+                DropdownLabel.Position = UDim2.new(0, 8, 0, 4)
+                DropdownLabel.BackgroundTransparency = 1
+                DropdownLabel.Text = dropdownText
+                DropdownLabel.TextColor3 = Colors.Text
+                DropdownLabel.TextSize = 12
+                DropdownLabel.Font = Enum.Font.Gotham
+                DropdownLabel.TextXAlignment = Enum.TextXAlignment.Left
+                DropdownLabel.Parent = DropdownFrame
+                
+                -- Selected Label
+                local SelectedLabel = Instance.new("TextLabel")
+                SelectedLabel.Size = UDim2.new(0, 80, 0, 20)
+                SelectedLabel.Position = UDim2.new(1, -88, 0, 4)
+                SelectedLabel.BackgroundTransparency = 1
+                SelectedLabel.Text = default ~= "" and default or "None"
+                SelectedLabel.TextColor3 = Colors.Accent
+                SelectedLabel.TextSize = 11
+                SelectedLabel.Font = Enum.Font.GothamBold
+                SelectedLabel.TextXAlignment = Enum.TextXAlignment.Right
+                SelectedLabel.Parent = DropdownFrame
+                
+                -- Search Box
+                local SearchBox = Instance.new("TextBox")
+                SearchBox.Size = UDim2.new(1, -16, 0, 26)
+                SearchBox.Position = UDim2.new(0, 8, 0, 28)
+                SearchBox.BackgroundColor3 = Colors.Tertiary
+                SearchBox.BorderSizePixel = 0
+                SearchBox.PlaceholderText = placeholder
+                SearchBox.PlaceholderColor3 = Colors.TextDim
+                SearchBox.Text = ""
+                SearchBox.TextColor3 = Colors.Text
+                SearchBox.TextSize = 11
+                SearchBox.Font = Enum.Font.Gotham
+                SearchBox.ClearTextOnFocus = false
+                SearchBox.Parent = DropdownFrame
+                
+                local SearchCorner = Instance.new("UICorner")
+                SearchCorner.CornerRadius = UDim.new(0, 4)
+                SearchCorner.Parent = SearchBox
+                
+                local SearchPadding = Instance.new("UIPadding")
+                SearchPadding.PaddingLeft = UDim.new(0, 8)
+                SearchPadding.PaddingRight = UDim.new(0, 8)
+                SearchPadding.Parent = SearchBox
+                
+                -- Search Icon
+                local SearchIcon = Instance.new("TextLabel")
+                SearchIcon.Size = UDim2.new(0, 16, 0, 26)
+                SearchIcon.Position = UDim2.new(1, -28, 0, 28)
+                SearchIcon.BackgroundTransparency = 1
+                SearchIcon.Text = "🔍"
+                SearchIcon.TextSize = 11
+                SearchIcon.Parent = DropdownFrame
+                
+                -- Options Container
+                local OptionsFrame = Instance.new("ScrollingFrame")
+                OptionsFrame.Size = UDim2.new(1, -16, 0, 0)
+                OptionsFrame.Position = UDim2.new(0, 8, 0, 58)
+                OptionsFrame.BackgroundTransparency = 1
+                OptionsFrame.BorderSizePixel = 0
+                OptionsFrame.ScrollBarThickness = 2
+                OptionsFrame.ScrollBarImageColor3 = Colors.Accent
+                OptionsFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+                OptionsFrame.Parent = DropdownFrame
+                
+                local OptionsList = Instance.new("UIListLayout")
+                OptionsList.SortOrder = Enum.SortOrder.LayoutOrder
+                OptionsList.Padding = UDim.new(0, 2)
+                OptionsList.Parent = OptionsFrame
+                
+                local isOpen = false
+                local currentOption = default
+                local optionButtons = {}
+                
+                local function createOptionButton(option)
+                    local OptionButton = Instance.new("TextButton")
+                    OptionButton.Size = UDim2.new(1, -4, 0, 24)
+                    OptionButton.BackgroundColor3 = Colors.Tertiary
+                    OptionButton.BorderSizePixel = 0
+                    OptionButton.Text = option
+                    OptionButton.TextColor3 = Colors.Text
+                    OptionButton.TextSize = 11
+                    OptionButton.Font = Enum.Font.Gotham
+                    OptionButton.Parent = OptionsFrame
+                    
+                    local OptionCorner = Instance.new("UICorner")
+                    OptionCorner.CornerRadius = UDim.new(0, 4)
+                    OptionCorner.Parent = OptionButton
+                    
+                    OptionButton.MouseButton1Click:Connect(function()
+                        currentOption = option
+                        SelectedLabel.Text = option
+                        SearchBox.Text = ""
+                        
+                        isOpen = false
+                        Tween(DropdownFrame, {Size = UDim2.new(1, 0, 0, 65)}, 0.3)
+                        
+                        SafeCallback(callback, option)
+                        
+                        if flag and ConfigSystem.CurrentConfig then
+                            ConfigSystem.CurrentConfig[flag] = option
+                        end
+                    end)
+                    
+                    OptionButton.MouseEnter:Connect(function()
+                        Tween(OptionButton, {BackgroundColor3 = Colors.Accent}, 0.2)
+                    end)
+                    
+                    OptionButton.MouseLeave:Connect(function()
+                        Tween(OptionButton, {BackgroundColor3 = Colors.Tertiary}, 0.2)
+                    end)
+                    
+                    return OptionButton
+                end
+                
+                local function filterOptions(searchText)
+                    for _, btn in pairs(optionButtons) do
+                        btn:Destroy()
+                    end
+                    optionButtons = {}
+                    
+                    local filtered = {}
+                    for _, option in ipairs(options) do
+                        if searchText == "" or string.find(string.lower(option), string.lower(searchText)) then
+                            table.insert(filtered, option)
+                        end
+                    end
+                    
+                    for _, option in ipairs(filtered) do
+                        local btn = createOptionButton(option)
+                        table.insert(optionButtons, btn)
+                    end
+                    
+                    local optionsHeight = math.min(#filtered * 26, 100)
+                    OptionsFrame.CanvasSize = UDim2.new(0, 0, 0, #filtered * 26)
+                    OptionsFrame.Size = UDim2.new(1, -16, 0, optionsHeight)
+                    
+                    if isOpen then
+                        Tween(DropdownFrame, {Size = UDim2.new(1, 0, 0, 65 + optionsHeight)}, 0.2)
+                    end
+                end
+                
+                SearchBox.Focused:Connect(function()
+                    isOpen = true
+                    filterOptions(SearchBox.Text)
+                end)
+                
+                SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+                    filterOptions(SearchBox.Text)
+                end)
+                
+                SearchBox.FocusLost:Connect(function()
+                    task.wait(0.15)
+                    if not SearchBox:IsFocused() then
+                        isOpen = false
+                        Tween(DropdownFrame, {Size = UDim2.new(1, 0, 0, 65)}, 0.3)
+                    end
+                end)
+                
+                local searchDropdownObj = {
+                    SetValue = function(option)
+                        if table.find(options, option) then
+                            currentOption = option
+                            SelectedLabel.Text = option
+                            SafeCallback(callback, option)
+                            if flag and ConfigSystem.CurrentConfig then
+                                ConfigSystem.CurrentConfig[flag] = option
+                            end
+                        end
+                    end,
+                    SetOptions = function(newOptions)
+                        options = newOptions
+                        filterOptions(SearchBox.Text)
+                        if not table.find(options, currentOption) then
+                            currentOption = ""
+                            SelectedLabel.Text = "None"
+                        end
+                    end,
+                    GetValue = function()
+                        return currentOption
+                    end
+                }
+                
+                if flag and ConfigSystem and ConfigSystem.Flags then
+                    ConfigSystem.Flags[flag] = {
+                        Type = "SearchDropdown",
+                        Set = function(option) searchDropdownObj.SetValue(option) end,
+                        Get = function() return currentOption end
+                    }
+                end
+                
+                return searchDropdownObj
+            end
+            
+            -- ═══════════════════════════════════════════
+            -- COLLAPSIBLE: AddMultiDropdown
+            -- ═══════════════════════════════════════════
+            function Collapsible:AddMultiDropdown(config)
+                config = config or {}
+                local dropdownText = config.Name or "Multi Dropdown"
+                local options = config.Options or {"Option 1", "Option 2", "Option 3"}
+                local default = config.Default or {}
+                local callback = config.Callback or function() end
+                local flag = config.Flag
+                
+                local DropdownFrame = Instance.new("Frame")
+                DropdownFrame.Size = UDim2.new(1, 0, 0, 35)
+                DropdownFrame.BackgroundColor3 = Colors.Background
+                DropdownFrame.BorderSizePixel = 0
+                DropdownFrame.ClipsDescendants = true
+                DropdownFrame.Parent = ContentFrame
+                
+                local DropdownCorner = Instance.new("UICorner")
+                DropdownCorner.CornerRadius = UDim.new(0, 6)
+                DropdownCorner.Parent = DropdownFrame
+                
+                local DropdownButton = Instance.new("TextButton")
+                DropdownButton.Size = UDim2.new(1, 0, 0, 35)
+                DropdownButton.BackgroundTransparency = 1
+                DropdownButton.Text = ""
+                DropdownButton.Parent = DropdownFrame
+                
+                local selectedOptions = {}
+                for _, v in ipairs(default) do
+                    selectedOptions[v] = true
+                end
+                
+                local function updateLabel()
+                    local count = 0
+                    for _ in pairs(selectedOptions) do
+                        count = count + 1
+                    end
+                    
+                    if count == 0 then
+                        return dropdownText .. ": None"
+                    elseif count == 1 then
+                        for opt in pairs(selectedOptions) do
+                            return dropdownText .. ": " .. opt
+                        end
+                    else
+                        return dropdownText .. ": " .. count .. " selected"
+                    end
+                end
+                
+                local DropdownLabel = Instance.new("TextLabel")
+                DropdownLabel.Size = UDim2.new(1, -30, 0, 35)
+                DropdownLabel.Position = UDim2.new(0, 10, 0, 0)
+                DropdownLabel.BackgroundTransparency = 1
+                DropdownLabel.Text = updateLabel()
+                DropdownLabel.TextColor3 = Colors.Text
+                DropdownLabel.TextSize = 13
+                DropdownLabel.Font = Enum.Font.Gotham
+                DropdownLabel.TextXAlignment = Enum.TextXAlignment.Left
+                DropdownLabel.Parent = DropdownFrame
+                
+                local DropdownIcon = Instance.new("TextLabel")
+                DropdownIcon.Size = UDim2.new(0, 20, 0, 35)
+                DropdownIcon.Position = UDim2.new(1, -25, 0, 0)
+                DropdownIcon.BackgroundTransparency = 1
+                DropdownIcon.Text = "▼"
+                DropdownIcon.TextColor3 = Colors.TextDim
+                DropdownIcon.TextSize = 10
+                DropdownIcon.Font = Enum.Font.Gotham
+                DropdownIcon.Parent = DropdownFrame
+                
+                local OptionsList = Instance.new("Frame")
+                OptionsList.Size = UDim2.new(1, -10, 0, #options * 28)
+                OptionsList.Position = UDim2.new(0, 5, 0, 38)
+                OptionsList.BackgroundTransparency = 1
+                OptionsList.Parent = DropdownFrame
+                
+                local OptionsListLayout = Instance.new("UIListLayout")
+                OptionsListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+                OptionsListLayout.Padding = UDim.new(0, 3)
+                OptionsListLayout.Parent = OptionsList
+                
+                local isOpen = false
+                
+                DropdownButton.MouseButton1Click:Connect(function()
+                    isOpen = not isOpen
+                    
+                    if isOpen then
+                        Tween(DropdownFrame, {Size = UDim2.new(1, 0, 0, 42 + #options * 28)}, 0.3)
+                        Tween(DropdownIcon, {Rotation = 180}, 0.3)
+                    else
+                        Tween(DropdownFrame, {Size = UDim2.new(1, 0, 0, 35)}, 0.3)
+                        Tween(DropdownIcon, {Rotation = 0}, 0.3)
+                    end
+                end)
+                
+                for _, option in ipairs(options) do
+                    local OptionButton = Instance.new("TextButton")
+                    OptionButton.Size = UDim2.new(1, 0, 0, 25)
+                    OptionButton.BackgroundColor3 = Colors.Tertiary
+                    OptionButton.BorderSizePixel = 0
+                    OptionButton.Text = ""
+                    OptionButton.Parent = OptionsList
+                    
+                    local OptionCorner = Instance.new("UICorner")
+                    OptionCorner.CornerRadius = UDim.new(0, 4)
+                    OptionCorner.Parent = OptionButton
+                    
+                    local Checkbox = Instance.new("Frame")
+                    Checkbox.Size = UDim2.new(0, 16, 0, 16)
+                    Checkbox.Position = UDim2.new(0, 6, 0.5, -8)
+                    Checkbox.BackgroundColor3 = selectedOptions[option] and Colors.Accent or Colors.Border
+                    Checkbox.BorderSizePixel = 0
+                    Checkbox.Parent = OptionButton
+                    
+                    local CheckboxCorner = Instance.new("UICorner")
+                    CheckboxCorner.CornerRadius = UDim.new(0, 3)
+                    CheckboxCorner.Parent = Checkbox
+                    
+                    local Checkmark = Instance.new("TextLabel")
+                    Checkmark.Size = UDim2.new(1, 0, 1, 0)
+                    Checkmark.BackgroundTransparency = 1
+                    Checkmark.Text = selectedOptions[option] and "✓" or ""
+                    Checkmark.TextColor3 = Colors.Text
+                    Checkmark.TextSize = 12
+                    Checkmark.Font = Enum.Font.GothamBold
+                    Checkmark.Parent = Checkbox
+                    
+                    local OptionLabel = Instance.new("TextLabel")
+                    OptionLabel.Size = UDim2.new(1, -30, 1, 0)
+                    OptionLabel.Position = UDim2.new(0, 26, 0, 0)
+                    OptionLabel.BackgroundTransparency = 1
+                    OptionLabel.Text = option
+                    OptionLabel.TextColor3 = Colors.Text
+                    OptionLabel.TextSize = 11
+                    OptionLabel.Font = Enum.Font.Gotham
+                    OptionLabel.TextXAlignment = Enum.TextXAlignment.Left
+                    OptionLabel.Parent = OptionButton
+                    
+                    OptionButton.MouseButton1Click:Connect(function()
+                        selectedOptions[option] = not selectedOptions[option]
+                        
+                        Tween(Checkbox, {
+                            BackgroundColor3 = selectedOptions[option] and Colors.Accent or Colors.Border
+                        }, 0.2)
+                        
+                        Checkmark.Text = selectedOptions[option] and "✓" or ""
+                        DropdownLabel.Text = updateLabel()
+                        
+                        local selected = {}
+                        for opt, isSelected in pairs(selectedOptions) do
+                            if isSelected then
+                                table.insert(selected, opt)
+                            end
+                        end
+                        
+                        SafeCallback(callback, selected)
+                        
+                        if flag and ConfigSystem.CurrentConfig then
+                            ConfigSystem.CurrentConfig[flag] = selected
+                        end
+                    end)
+                    
+                    OptionButton.MouseEnter:Connect(function()
+                        Tween(OptionButton, {BackgroundColor3 = Colors.Accent}, 0.2)
+                    end)
+                    
+                    OptionButton.MouseLeave:Connect(function()
+                        Tween(OptionButton, {BackgroundColor3 = Colors.Tertiary}, 0.2)
+                    end)
+                end
+                
+                local multiDropdownObj = {
+                    SetValue = function(values)
+                        selectedOptions = {}
+                        for _, v in ipairs(values) do
+                            selectedOptions[v] = true
+                        end
+                        
+                        DropdownLabel.Text = updateLabel()
+                        
+                        for _, child in ipairs(OptionsList:GetChildren()) do
+                            if child:IsA("TextButton") then
+                                local optLabel = child:FindFirstChild("TextLabel")
+                                if optLabel then
+                                    local optName = optLabel.Text
+                                    local checkbox = child:FindFirstChild("Frame")
+                                    if checkbox then
+                                        local checkmark = checkbox:FindFirstChild("TextLabel")
+                                        checkbox.BackgroundColor3 = selectedOptions[optName] and Colors.Accent or Colors.Border
+                                        if checkmark then
+                                            checkmark.Text = selectedOptions[optName] and "✓" or ""
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                        
+                        local selected = {}
+                        for opt, isSelected in pairs(selectedOptions) do
+                            if isSelected then
+                                table.insert(selected, opt)
+                            end
+                        end
+                        SafeCallback(callback, selected)
+                        
+                        if flag and ConfigSystem.CurrentConfig then
+                            ConfigSystem.CurrentConfig[flag] = selected
+                        end
+                    end,
+                    GetValue = function()
+                        local selected = {}
+                        for opt, isSelected in pairs(selectedOptions) do
+                            if isSelected then
+                                table.insert(selected, opt)
+                            end
+                        end
+                        return selected
+                    end
+                }
+                
+                if flag and ConfigSystem and ConfigSystem.Flags then
+                    ConfigSystem.Flags[flag] = {
+                        Type = "MultiDropdown",
+                        Set = function(values) multiDropdownObj.SetValue(values) end,
+                        Get = function() return multiDropdownObj.GetValue() end
+                    }
+                end
+                
+                return multiDropdownObj
+            end
+            
             return Collapsible
         end
         
