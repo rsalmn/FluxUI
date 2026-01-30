@@ -34,9 +34,8 @@
 ## 📦 Installation
 
 ### Method 1: Loadstring (Recommended)
-`lua
-local FluxUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/rsalmn/FluxUI/main/FluxUI.lua"))()
-`
+    lua local FluxUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/rsalmn/FluxUI/main/FluxUI.lua"))()
+    
 
 ### Method 2: Local File
 `lua
@@ -49,9 +48,7 @@ local FluxUI = loadfile("FluxUI.lua")()
 
 ### Creating a Window
 
-`lua
-local FluxUI = loadstring(game:HttpGet("YOUR_RAW_LINK"))()
-
+`lua local FluxUI = loadstring(game:HttpGet("YOUR_RAW_LINK"))()
 local Window = FluxUI:CreateWindow({
     Name = "My Script Hub",
     Size = UDim2.new(0, 550, 0, 400),
@@ -207,8 +204,7 @@ MainTab:CreateDivider("With Text") -- Line with text
 `
 
 ### Chart (Bar Graph)
-`lua
-local chart = MainTab:CreateChart({
+`lua local chart = MainTab:CreateChart({
     Name = "Player Stats",
     Type = "Bar",
     Max = 100,
@@ -221,8 +217,6 @@ local chart = MainTab:CreateChart({
         {Label = "DEF", Value = 40}
     }
 })
-
--- Update chart data
 chart.SetData({
     {Label = "HP", Value = 100},
     {Label = "MP", Value = 75}
@@ -230,23 +224,22 @@ chart.SetData({
 `
 
 ### Collapsible Section
+-- All components available:
+-- AddButton, AddToggle, AddSlider, AddDropdown, AddTextbox,
+-- AddKeybind, AddColorPicker, AddLabel, AddDivider, AddParagraph, AddSection
 `lua
 local Collapsible = MainTab:CreateCollapsible({
     Name = "Player Options",
     DefaultOpen = false
 })
-
--- Add components inside collapsible
 Collapsible:AddButton({
     Name = "Button Inside",
     Callback = function() end
 })
-
 Collapsible:AddToggle({
     Name = "Toggle Inside",
     Callback = function(v) end
 })
-
 Collapsible:AddSlider({
     Name = "Slider Inside",
     Min = 0,
@@ -254,10 +247,6 @@ Collapsible:AddSlider({
     Default = 50,
     Callback = function(v) end
 })
-
--- All components available:
--- AddButton, AddToggle, AddSlider, AddDropdown, AddTextbox,
--- AddKeybind, AddColorPicker, AddLabel, AddDivider, AddParagraph, AddSection
 `
 
 ---
@@ -277,11 +266,9 @@ FluxUI comes with **8 beautiful pre-built themes**:
 | **Emerald** | Forest dark with green accent |
 | **Midnight** | Ultra dark with indigo accent |
 
-`lua
--- Available themes
-FluxUI.Themes -- {"Dark", "Light", "Purple", "Ocean", "Sunset", "Rose", "Emerald", "Midnight"}
-
 -- Set theme when creating window
+-- Available themes: "Dark", "Light", "Purple", "Ocean", "Sunset", "Rose", "Emerald", "Midnight"
+`lua FluxUI.Themes -- {"Dark", "Light", "Purple", "Ocean", "Sunset", "Rose", "Emerald", "Midnight"}
 local Window = FluxUI:CreateWindow({
     Name = "My Hub",
     Theme = "Ocean"
@@ -301,16 +288,20 @@ Window:AddConfigTab() -- Adds a complete config management tab
 `lua
 -- Save config
 Window:SaveConfig("MyConfig")
-
+`
+`
 -- Load config
 Window:LoadConfig("MyConfig")
-
+`
+`
 -- Delete config
 Window:DeleteConfig("MyConfig")
-
+`
+`
 -- Get all configs
 local configs = Window:GetConfigs()
-
+`
+`
 -- Auto load config on start
 Window:AutoLoadConfig("MyConfig")
 `
@@ -337,7 +328,8 @@ Window:Notify({
     Duration = 3,
     Type = "Success" -- "Default", "Success", "Warning", "Error"
 })
-
+`
+`
 -- Using FluxUI global method
 FluxUI:Notify({
     Title = "Warning",
@@ -374,20 +366,23 @@ Window.Confirm({
 ## 📱 Full Example
 
 `lua
-local FluxUI = loadstring(game:HttpGet("YOUR_RAW_LINK"))()
+local FluxUI = loadstring(game:HttpGet("[YOUR_RAW_LINK](https://raw.githubusercontent.com/rsalmn/FluxUI/refs/heads/main/FluxUI.lua)"))()
+`
 
 -- Create Window
+`
 local Window = FluxUI:CreateWindow({
     Name = "🚀 My Script Hub",
     Size = UDim2.new(0, 550, 0, 400),
     Theme = "Purple"
 })
-
+`
 -- Main Tab
+`
 local MainTab = Window:CreateTab("🏠 Main")
-
 MainTab:CreateSection("Player Modifications")
-
+`
+`
 MainTab:CreateSlider({
     Name = "Walk Speed",
     Min = 16,
@@ -400,7 +395,8 @@ MainTab:CreateSlider({
         end
     end
 })
-
+`
+`
 MainTab:CreateSlider({
     Name = "Jump Power",
     Min = 50,
@@ -413,7 +409,8 @@ MainTab:CreateSlider({
         end
     end
 })
-
+`
+`
 MainTab:CreateToggle({
     Name = "Infinite Jump",
     Default = false,
@@ -422,14 +419,17 @@ MainTab:CreateToggle({
         _G.InfiniteJump = value
     end
 })
-
+`
+`
 MainTab:CreateDivider("Teleport")
-
+`
+`
 local players = {}
 for _, player in pairs(game.Players:GetPlayers()) do
     table.insert(players, player.Name)
 end
-
+`
+`
 local playerDropdown = MainTab:CreateSearchDropdown({
     Name = "Select Player",
     Options = players,
@@ -438,19 +438,19 @@ local playerDropdown = MainTab:CreateSearchDropdown({
         -- Store selected player
     end
 })
-
+`
+`
 MainTab:CreateButton({
     Name = "Teleport to Player",
     Callback = function()
         -- Teleport logic
     end
 })
-
+`
 -- Settings Tab
+`
 local SettingsTab = Window:CreateTab("⚙️ Settings")
-
 SettingsTab:CreateSection("UI Settings")
-
 SettingsTab:CreateKeybind({
     Name = "Toggle UI",
     Default = Enum.KeyCode.RightShift,
@@ -458,14 +458,18 @@ SettingsTab:CreateKeybind({
         -- Toggle UI visibility
     end
 })
-
+`
 -- Add Config Tab
+`
 Window:AddConfigTab()
-
+`
 -- Auto load config
+`
 Window:AutoLoadConfig("Default")
+`
 
 -- Show welcome notification
+`
 Window:Notify({
     Title = "Welcome!",
     Content = "Script loaded successfully!",
