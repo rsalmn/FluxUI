@@ -393,6 +393,14 @@ local function GetConfigList()
     return configs
 end
 
+-- Public Notification Function
+function FluxUI:Notify(config)
+    CreateNotification(config)
+end
+
+-- Theme List
+FluxUI.Themes = {"Dark", "Light", "Purple", "Ocean", "Sunset", "Rose", "Emerald", "Midnight"}
+
 -- Main Window Class
 function FluxUI:CreateWindow(config)
     config = config or {}
@@ -430,6 +438,66 @@ function FluxUI:CreateWindow(config)
             Text = Color3.fromRGB(20, 20, 25),
             TextDim = Color3.fromRGB(100, 100, 110),
             Border = Color3.fromRGB(220, 220, 230)
+        },
+        Purple = {
+            Background = Color3.fromRGB(25, 20, 35),
+            Secondary = Color3.fromRGB(35, 28, 50),
+            Tertiary = Color3.fromRGB(50, 40, 70),
+            Accent = Color3.fromRGB(138, 43, 226),
+            AccentHover = Color3.fromRGB(160, 80, 255),
+            Text = Color3.fromRGB(255, 255, 255),
+            TextDim = Color3.fromRGB(190, 170, 210),
+            Border = Color3.fromRGB(80, 60, 100)
+        },
+        Ocean = {
+            Background = Color3.fromRGB(15, 25, 35),
+            Secondary = Color3.fromRGB(20, 35, 50),
+            Tertiary = Color3.fromRGB(30, 50, 70),
+            Accent = Color3.fromRGB(0, 150, 200),
+            AccentHover = Color3.fromRGB(50, 180, 230),
+            Text = Color3.fromRGB(255, 255, 255),
+            TextDim = Color3.fromRGB(150, 190, 210),
+            Border = Color3.fromRGB(50, 80, 110)
+        },
+        Sunset = {
+            Background = Color3.fromRGB(30, 20, 20),
+            Secondary = Color3.fromRGB(45, 30, 30),
+            Tertiary = Color3.fromRGB(60, 40, 40),
+            Accent = Color3.fromRGB(255, 100, 50),
+            AccentHover = Color3.fromRGB(255, 130, 80),
+            Text = Color3.fromRGB(255, 255, 255),
+            TextDim = Color3.fromRGB(220, 180, 170),
+            Border = Color3.fromRGB(100, 60, 50)
+        },
+        Rose = {
+            Background = Color3.fromRGB(30, 20, 25),
+            Secondary = Color3.fromRGB(45, 30, 38),
+            Tertiary = Color3.fromRGB(60, 40, 50),
+            Accent = Color3.fromRGB(255, 80, 120),
+            AccentHover = Color3.fromRGB(255, 120, 150),
+            Text = Color3.fromRGB(255, 255, 255),
+            TextDim = Color3.fromRGB(220, 180, 195),
+            Border = Color3.fromRGB(100, 60, 75)
+        },
+        Emerald = {
+            Background = Color3.fromRGB(18, 28, 22),
+            Secondary = Color3.fromRGB(25, 40, 32),
+            Tertiary = Color3.fromRGB(35, 55, 45),
+            Accent = Color3.fromRGB(50, 205, 100),
+            AccentHover = Color3.fromRGB(80, 230, 130),
+            Text = Color3.fromRGB(255, 255, 255),
+            TextDim = Color3.fromRGB(170, 210, 185),
+            Border = Color3.fromRGB(55, 85, 65)
+        },
+        Midnight = {
+            Background = Color3.fromRGB(10, 10, 20),
+            Secondary = Color3.fromRGB(18, 18, 35),
+            Tertiary = Color3.fromRGB(28, 28, 50),
+            Accent = Color3.fromRGB(100, 100, 255),
+            AccentHover = Color3.fromRGB(130, 130, 255),
+            Text = Color3.fromRGB(255, 255, 255),
+            TextDim = Color3.fromRGB(150, 150, 200),
+            Border = Color3.fromRGB(50, 50, 80)
         }
     }
     
@@ -685,10 +753,189 @@ function FluxUI:CreateWindow(config)
     CloseCorner.CornerRadius = UDim.new(0, 8)
     CloseCorner.Parent = CloseButton
     
+    -- Confirmation Dialog Function
+    local function ShowConfirmDialog(dialogConfig)
+        dialogConfig = dialogConfig or {}
+        local title = dialogConfig.Title or "Confirm"
+        local content = dialogConfig.Content or "Are you sure?"
+        local confirmText = dialogConfig.ConfirmText or "Yes"
+        local cancelText = dialogConfig.CancelText or "No"
+        local callback = dialogConfig.Callback or function() end
+        
+        -- Dialog Overlay
+        local DialogOverlay = Instance.new("Frame")
+        DialogOverlay.Size = UDim2.new(1, 0, 1, 0)
+        DialogOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        DialogOverlay.BackgroundTransparency = 1
+        DialogOverlay.ZIndex = 100
+        DialogOverlay.Parent = ScreenGui
+        
+        Tween(DialogOverlay, {BackgroundTransparency = 0.5}, 0.2)
+        
+        -- Dialog Frame
+        local DialogFrame = Instance.new("Frame")
+        DialogFrame.Size = UDim2.new(0, 0, 0, 0)
+        DialogFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+        DialogFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+        DialogFrame.BackgroundColor3 = Colors.Background
+        DialogFrame.BorderSizePixel = 0
+        DialogFrame.ZIndex = 101
+        DialogFrame.Parent = ScreenGui
+        
+        local DialogCorner = Instance.new("UICorner")
+        DialogCorner.CornerRadius = UDim.new(0, 12)
+        DialogCorner.Parent = DialogFrame
+        
+        -- Dialog Shadow
+        local DialogShadow = Instance.new("ImageLabel")
+        DialogShadow.Size = UDim2.new(1, 30, 1, 30)
+        DialogShadow.Position = UDim2.new(0, -15, 0, -15)
+        DialogShadow.BackgroundTransparency = 1
+        DialogShadow.Image = "rbxassetid://5554236805"
+        DialogShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+        DialogShadow.ImageTransparency = 0.4
+        DialogShadow.ScaleType = Enum.ScaleType.Slice
+        DialogShadow.SliceCenter = Rect.new(23, 23, 277, 277)
+        DialogShadow.ZIndex = 100
+        DialogShadow.Parent = DialogFrame
+        
+        -- Icon
+        local DialogIcon = Instance.new("TextLabel")
+        DialogIcon.Size = UDim2.new(0, 50, 0, 50)
+        DialogIcon.Position = UDim2.new(0.5, -25, 0, 20)
+        DialogIcon.BackgroundColor3 = Color3.fromRGB(255, 180, 50)
+        DialogIcon.BorderSizePixel = 0
+        DialogIcon.Text = "!"
+        DialogIcon.TextColor3 = Colors.Background
+        DialogIcon.TextSize = 28
+        DialogIcon.Font = Enum.Font.GothamBold
+        DialogIcon.ZIndex = 102
+        DialogIcon.Parent = DialogFrame
+        
+        local IconCorner = Instance.new("UICorner")
+        IconCorner.CornerRadius = UDim.new(1, 0)
+        IconCorner.Parent = DialogIcon
+        
+        -- Title
+        local DialogTitle = Instance.new("TextLabel")
+        DialogTitle.Size = UDim2.new(1, -30, 0, 25)
+        DialogTitle.Position = UDim2.new(0, 15, 0, 80)
+        DialogTitle.BackgroundTransparency = 1
+        DialogTitle.Text = title
+        DialogTitle.TextColor3 = Colors.Text
+        DialogTitle.TextSize = 18
+        DialogTitle.Font = Enum.Font.GothamBold
+        DialogTitle.ZIndex = 102
+        DialogTitle.Parent = DialogFrame
+        
+        -- Content
+        local DialogContent = Instance.new("TextLabel")
+        DialogContent.Size = UDim2.new(1, -30, 0, 40)
+        DialogContent.Position = UDim2.new(0, 15, 0, 110)
+        DialogContent.BackgroundTransparency = 1
+        DialogContent.Text = content
+        DialogContent.TextColor3 = Colors.TextDim
+        DialogContent.TextSize = 14
+        DialogContent.Font = Enum.Font.Gotham
+        DialogContent.TextWrapped = true
+        DialogContent.ZIndex = 102
+        DialogContent.Parent = DialogFrame
+        
+        -- Cancel Button
+        local CancelBtn = Instance.new("TextButton")
+        CancelBtn.Size = UDim2.new(0.45, -10, 0, 38)
+        CancelBtn.Position = UDim2.new(0, 15, 0, 165)
+        CancelBtn.BackgroundColor3 = Colors.Tertiary
+        CancelBtn.BorderSizePixel = 0
+        CancelBtn.Text = cancelText
+        CancelBtn.TextColor3 = Colors.Text
+        CancelBtn.TextSize = 14
+        CancelBtn.Font = Enum.Font.GothamMedium
+        CancelBtn.ZIndex = 102
+        CancelBtn.Parent = DialogFrame
+        
+        local CancelCorner = Instance.new("UICorner")
+        CancelCorner.CornerRadius = UDim.new(0, 8)
+        CancelCorner.Parent = CancelBtn
+        
+        -- Confirm Button
+        local ConfirmBtn = Instance.new("TextButton")
+        ConfirmBtn.Size = UDim2.new(0.45, -10, 0, 38)
+        ConfirmBtn.Position = UDim2.new(0.55, 5, 0, 165)
+        ConfirmBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+        ConfirmBtn.BorderSizePixel = 0
+        ConfirmBtn.Text = confirmText
+        ConfirmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        ConfirmBtn.TextSize = 14
+        ConfirmBtn.Font = Enum.Font.GothamMedium
+        ConfirmBtn.ZIndex = 102
+        ConfirmBtn.Parent = DialogFrame
+        
+        local ConfirmCorner = Instance.new("UICorner")
+        ConfirmCorner.CornerRadius = UDim.new(0, 8)
+        ConfirmCorner.Parent = ConfirmBtn
+        
+        -- Animate in
+        Tween(DialogFrame, {Size = UDim2.new(0, 300, 0, 220)}, 0.3, Enum.EasingStyle.Back)
+        
+        -- Button Hovers
+        CancelBtn.MouseEnter:Connect(function()
+            Tween(CancelBtn, {BackgroundColor3 = Colors.Border}, 0.2)
+        end)
+        CancelBtn.MouseLeave:Connect(function()
+            Tween(CancelBtn, {BackgroundColor3 = Colors.Tertiary}, 0.2)
+        end)
+        
+        ConfirmBtn.MouseEnter:Connect(function()
+            Tween(ConfirmBtn, {BackgroundColor3 = Color3.fromRGB(240, 70, 70)}, 0.2)
+        end)
+        ConfirmBtn.MouseLeave:Connect(function()
+            Tween(ConfirmBtn, {BackgroundColor3 = Color3.fromRGB(220, 50, 50)}, 0.2)
+        end)
+        
+        -- Close Dialog Function
+        local function closeDialog(result)
+            Tween(DialogFrame, {Size = UDim2.new(0, 0, 0, 0)}, 0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+            Tween(DialogOverlay, {BackgroundTransparency = 1}, 0.2)
+            task.wait(0.2)
+            DialogOverlay:Destroy()
+            DialogFrame:Destroy()
+            SafeCallback(callback, result)
+        end
+        
+        CancelBtn.MouseButton1Click:Connect(function()
+            closeDialog(false)
+        end)
+        
+        ConfirmBtn.MouseButton1Click:Connect(function()
+            closeDialog(true)
+        end)
+        
+        -- Click overlay to cancel
+        DialogOverlay.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                closeDialog(false)
+            end
+        end)
+    end
+    
+    -- Store confirm function in Window
+    Window.Confirm = ShowConfirmDialog
+    
     CloseButton.MouseButton1Click:Connect(function()
-        Tween(MainFrame, {Size = UDim2.new(0, 0, 0, 0)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In)
-        task.wait(0.3)
-        ScreenGui:Destroy()
+        ShowConfirmDialog({
+            Title = "Close Window?",
+            Content = "Are you sure you want to close this window?",
+            ConfirmText = "Close",
+            CancelText = "Cancel",
+            Callback = function(confirmed)
+                if confirmed then
+                    Tween(MainFrame, {Size = UDim2.new(0, 0, 0, 0)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+                    task.wait(0.3)
+                    ScreenGui:Destroy()
+                end
+            end
+        })
     end)
     
     CloseButton.MouseEnter:Connect(function()
@@ -1836,6 +2083,426 @@ function FluxUI:CreateWindow(config)
                 Line.BorderSizePixel = 0
                 Line.Parent = DividerFrame
             end
+        end
+        
+        -- ═══════════════════════════════════════════
+        -- SEARCHABLE DROPDOWN
+        -- ═══════════════════════════════════════════
+        function Tab:CreateSearchDropdown(config)
+            config = config or {}
+            local dropdownText = config.Name or "Search Dropdown"
+            local options = config.Options or {"Option 1", "Option 2", "Option 3"}
+            local default = config.Default or ""
+            local placeholder = config.Placeholder or "Search..."
+            local callback = config.Callback or function() end
+            local flag = config.Flag
+            
+            local DropdownFrame = Instance.new("Frame")
+            DropdownFrame.Size = UDim2.new(1, 0, 0, 75)
+            DropdownFrame.BackgroundColor3 = Colors.Tertiary
+            DropdownFrame.BorderSizePixel = 0
+            DropdownFrame.ClipsDescendants = true
+            DropdownFrame.Parent = TabContent
+            
+            local DropdownCorner = Instance.new("UICorner")
+            DropdownCorner.CornerRadius = UDim.new(0, 8)
+            DropdownCorner.Parent = DropdownFrame
+            
+            -- Label
+            local DropdownLabel = Instance.new("TextLabel")
+            DropdownLabel.Size = UDim2.new(1, -20, 0, 25)
+            DropdownLabel.Position = UDim2.new(0, 10, 0, 5)
+            DropdownLabel.BackgroundTransparency = 1
+            DropdownLabel.Text = dropdownText
+            DropdownLabel.TextColor3 = Colors.Text
+            DropdownLabel.TextSize = 14
+            DropdownLabel.Font = Enum.Font.Gotham
+            DropdownLabel.TextXAlignment = Enum.TextXAlignment.Left
+            DropdownLabel.Parent = DropdownFrame
+            
+            -- Selected Label
+            local SelectedLabel = Instance.new("TextLabel")
+            SelectedLabel.Size = UDim2.new(0, 100, 0, 25)
+            SelectedLabel.Position = UDim2.new(1, -110, 0, 5)
+            SelectedLabel.BackgroundTransparency = 1
+            SelectedLabel.Text = default ~= "" and default or "None"
+            SelectedLabel.TextColor3 = Colors.Accent
+            SelectedLabel.TextSize = 13
+            SelectedLabel.Font = Enum.Font.GothamBold
+            SelectedLabel.TextXAlignment = Enum.TextXAlignment.Right
+            SelectedLabel.Parent = DropdownFrame
+            
+            -- Search Box
+            local SearchBox = Instance.new("TextBox")
+            SearchBox.Size = UDim2.new(1, -20, 0, 30)
+            SearchBox.Position = UDim2.new(0, 10, 0, 35)
+            SearchBox.BackgroundColor3 = Colors.Background
+            SearchBox.BorderSizePixel = 0
+            SearchBox.PlaceholderText = placeholder
+            SearchBox.PlaceholderColor3 = Colors.TextDim
+            SearchBox.Text = ""
+            SearchBox.TextColor3 = Colors.Text
+            SearchBox.TextSize = 13
+            SearchBox.Font = Enum.Font.Gotham
+            SearchBox.ClearTextOnFocus = false
+            SearchBox.Parent = DropdownFrame
+            
+            local SearchCorner = Instance.new("UICorner")
+            SearchCorner.CornerRadius = UDim.new(0, 6)
+            SearchCorner.Parent = SearchBox
+            
+            local SearchPadding = Instance.new("UIPadding")
+            SearchPadding.PaddingLeft = UDim.new(0, 10)
+            SearchPadding.PaddingRight = UDim.new(0, 10)
+            SearchPadding.Parent = SearchBox
+            
+            -- Search Icon
+            local SearchIcon = Instance.new("TextLabel")
+            SearchIcon.Size = UDim2.new(0, 20, 0, 30)
+            SearchIcon.Position = UDim2.new(1, -35, 0, 35)
+            SearchIcon.BackgroundTransparency = 1
+            SearchIcon.Text = "🔍"
+            SearchIcon.TextSize = 14
+            SearchIcon.Parent = DropdownFrame
+            
+            -- Options Container
+            local OptionsFrame = Instance.new("ScrollingFrame")
+            OptionsFrame.Size = UDim2.new(1, -20, 0, 0)
+            OptionsFrame.Position = UDim2.new(0, 10, 0, 70)
+            OptionsFrame.BackgroundTransparency = 1
+            OptionsFrame.BorderSizePixel = 0
+            OptionsFrame.ScrollBarThickness = 3
+            OptionsFrame.ScrollBarImageColor3 = Colors.Accent
+            OptionsFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+            OptionsFrame.Parent = DropdownFrame
+            
+            local OptionsList = Instance.new("UIListLayout")
+            OptionsList.SortOrder = Enum.SortOrder.LayoutOrder
+            OptionsList.Padding = UDim.new(0, 3)
+            OptionsList.Parent = OptionsFrame
+            
+            local isOpen = false
+            local currentOption = default
+            local optionButtons = {}
+            
+            local function createOptionButton(option)
+                local OptionButton = Instance.new("TextButton")
+                OptionButton.Size = UDim2.new(1, -6, 0, 28)
+                OptionButton.BackgroundColor3 = Colors.Background
+                OptionButton.BorderSizePixel = 0
+                OptionButton.Text = option
+                OptionButton.TextColor3 = Colors.Text
+                OptionButton.TextSize = 13
+                OptionButton.Font = Enum.Font.Gotham
+                OptionButton.Parent = OptionsFrame
+                
+                local OptionCorner = Instance.new("UICorner")
+                OptionCorner.CornerRadius = UDim.new(0, 6)
+                OptionCorner.Parent = OptionButton
+                
+                OptionButton.MouseButton1Click:Connect(function()
+                    currentOption = option
+                    SelectedLabel.Text = option
+                    SearchBox.Text = ""
+                    
+                    -- Close dropdown
+                    isOpen = false
+                    Tween(DropdownFrame, {Size = UDim2.new(1, 0, 0, 75)}, 0.3)
+                    
+                    SafeCallback(callback, option)
+                    
+                    if flag and ConfigSystem.CurrentConfig then
+                        ConfigSystem.CurrentConfig[flag] = option
+                    end
+                end)
+                
+                OptionButton.MouseEnter:Connect(function()
+                    Tween(OptionButton, {BackgroundColor3 = Colors.Accent}, 0.2)
+                end)
+                
+                OptionButton.MouseLeave:Connect(function()
+                    Tween(OptionButton, {BackgroundColor3 = Colors.Background}, 0.2)
+                end)
+                
+                return OptionButton
+            end
+            
+            local function filterOptions(searchText)
+                for _, btn in ipairs(optionButtons) do
+                    btn:Destroy()
+                end
+                optionButtons = {}
+                
+                local filteredOptions = {}
+                for _, option in ipairs(options) do
+                    if searchText == "" or string.find(string.lower(option), string.lower(searchText)) then
+                        table.insert(filteredOptions, option)
+                    end
+                end
+                
+                for _, option in ipairs(filteredOptions) do
+                    local btn = createOptionButton(option)
+                    table.insert(optionButtons, btn)
+                end
+                
+                -- Update canvas size
+                OptionsFrame.CanvasSize = UDim2.new(0, 0, 0, #filteredOptions * 31)
+                
+                -- Update dropdown height
+                if isOpen then
+                    local optionsHeight = math.min(#filteredOptions * 31, 150)
+                    Tween(DropdownFrame, {Size = UDim2.new(1, 0, 0, 80 + optionsHeight)}, 0.2)
+                    OptionsFrame.Size = UDim2.new(1, -20, 0, optionsHeight)
+                end
+            end
+            
+            SearchBox.Focused:Connect(function()
+                isOpen = true
+                filterOptions(SearchBox.Text)
+            end)
+            
+            SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+                filterOptions(SearchBox.Text)
+            end)
+            
+            SearchBox.FocusLost:Connect(function()
+                task.wait(0.1) -- Small delay to allow button clicks
+                if not SearchBox:IsFocused() then
+                    isOpen = false
+                    Tween(DropdownFrame, {Size = UDim2.new(1, 0, 0, 75)}, 0.3)
+                end
+            end)
+            
+            local searchDropdownObj = {
+                SetValue = function(option)
+                    if table.find(options, option) then
+                        currentOption = option
+                        SelectedLabel.Text = option
+                        SafeCallback(callback, option)
+                        if flag and ConfigSystem.CurrentConfig then
+                            ConfigSystem.CurrentConfig[flag] = option
+                        end
+                    end
+                end,
+                SetOptions = function(newOptions)
+                    options = newOptions
+                    filterOptions(SearchBox.Text)
+                end,
+                Refresh = function(newOptions)
+                    options = newOptions
+                    filterOptions(SearchBox.Text)
+                    
+                    if not table.find(options, currentOption) then
+                        currentOption = ""
+                        SelectedLabel.Text = "None"
+                    end
+                end
+            }
+            
+            if flag and ConfigSystem and ConfigSystem.Flags then
+                ConfigSystem.Flags[flag] = {
+                    Type = "SearchDropdown",
+                    Set = function(option) searchDropdownObj.SetValue(option) end,
+                    Get = function() return currentOption end
+                }
+            end
+            
+            return searchDropdownObj
+        end
+        
+        -- ═══════════════════════════════════════════
+        -- BAR CHART
+        -- ═══════════════════════════════════════════
+        function Tab:CreateChart(config)
+            config = config or {}
+            local chartTitle = config.Name or "Chart"
+            local chartType = config.Type or "Bar" -- Bar, Line (future)
+            local data = config.Data or {
+                {Label = "A", Value = 50},
+                {Label = "B", Value = 75},
+                {Label = "C", Value = 30}
+            }
+            local maxValue = config.Max or 100
+            local barColor = config.Color or Colors.Accent
+            local showValues = config.ShowValues ~= false
+            
+            local chartHeight = 120
+            local ChartFrame = Instance.new("Frame")
+            ChartFrame.Size = UDim2.new(1, 0, 0, chartHeight + 50)
+            ChartFrame.BackgroundColor3 = Colors.Tertiary
+            ChartFrame.BorderSizePixel = 0
+            ChartFrame.Parent = TabContent
+            
+            local ChartCorner = Instance.new("UICorner")
+            ChartCorner.CornerRadius = UDim.new(0, 8)
+            ChartCorner.Parent = ChartFrame
+            
+            -- Title
+            local ChartTitle = Instance.new("TextLabel")
+            ChartTitle.Size = UDim2.new(1, -20, 0, 25)
+            ChartTitle.Position = UDim2.new(0, 10, 0, 8)
+            ChartTitle.BackgroundTransparency = 1
+            ChartTitle.Text = chartTitle
+            ChartTitle.TextColor3 = Colors.Text
+            ChartTitle.TextSize = 14
+            ChartTitle.Font = Enum.Font.GothamBold
+            ChartTitle.TextXAlignment = Enum.TextXAlignment.Left
+            ChartTitle.Parent = ChartFrame
+            
+            -- Chart Area
+            local ChartArea = Instance.new("Frame")
+            ChartArea.Size = UDim2.new(1, -20, 0, chartHeight)
+            ChartArea.Position = UDim2.new(0, 10, 0, 35)
+            ChartArea.BackgroundColor3 = Colors.Background
+            ChartArea.BorderSizePixel = 0
+            ChartArea.Parent = ChartFrame
+            
+            local ChartAreaCorner = Instance.new("UICorner")
+            ChartAreaCorner.CornerRadius = UDim.new(0, 6)
+            ChartAreaCorner.Parent = ChartArea
+            
+            -- Bars Container
+            local BarsContainer = Instance.new("Frame")
+            BarsContainer.Size = UDim2.new(1, -20, 1, -30)
+            BarsContainer.Position = UDim2.new(0, 10, 0, 5)
+            BarsContainer.BackgroundTransparency = 1
+            BarsContainer.Parent = ChartArea
+            
+            local BarsLayout = Instance.new("UIListLayout")
+            BarsLayout.FillDirection = Enum.FillDirection.Horizontal
+            BarsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+            BarsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+            BarsLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+            BarsLayout.Padding = UDim.new(0, 8)
+            BarsLayout.Parent = BarsContainer
+            
+            local barElements = {}
+            local barWidth = math.min(40, (BarsContainer.AbsoluteSize.X - (#data - 1) * 8) / #data)
+            
+            local function updateChart(newData)
+                -- Remove old bars
+                for _, bar in ipairs(barElements) do
+                    bar:Destroy()
+                end
+                barElements = {}
+                
+                barWidth = math.min(40, (ChartArea.AbsoluteSize.X - 20 - (#newData - 1) * 8) / #newData)
+                
+                for i, item in ipairs(newData) do
+                    local barHeight = (item.Value / maxValue) * (chartHeight - 50)
+                    
+                    local BarFrame = Instance.new("Frame")
+                    BarFrame.Size = UDim2.new(0, barWidth, 0, 0)
+                    BarFrame.BackgroundTransparency = 1
+                    BarFrame.LayoutOrder = i
+                    BarFrame.Parent = BarsContainer
+                    
+                    local Bar = Instance.new("Frame")
+                    Bar.Size = UDim2.new(1, 0, 0, 0)
+                    Bar.Position = UDim2.new(0, 0, 1, 0)
+                    Bar.AnchorPoint = Vector2.new(0, 1)
+                    Bar.BackgroundColor3 = barColor
+                    Bar.BorderSizePixel = 0
+                    Bar.Parent = BarFrame
+                    
+                    local BarCorner = Instance.new("UICorner")
+                    BarCorner.CornerRadius = UDim.new(0, 4)
+                    BarCorner.Parent = Bar
+                    
+                    -- Animate bar
+                    Tween(Bar, {Size = UDim2.new(1, 0, 0, barHeight)}, 0.5, Enum.EasingStyle.Back)
+                    
+                    -- Value label
+                    if showValues then
+                        local ValueLabel = Instance.new("TextLabel")
+                        ValueLabel.Size = UDim2.new(1, 0, 0, 15)
+                        ValueLabel.Position = UDim2.new(0, 0, 0, -barHeight - 18)
+                        ValueLabel.BackgroundTransparency = 1
+                        ValueLabel.Text = tostring(item.Value)
+                        ValueLabel.TextColor3 = Colors.Text
+                        ValueLabel.TextSize = 10
+                        ValueLabel.Font = Enum.Font.GothamBold
+                        ValueLabel.Parent = Bar
+                    end
+                    
+                    table.insert(barElements, BarFrame)
+                end
+                
+                data = newData
+            end
+            
+            -- Labels Container
+            local LabelsContainer = Instance.new("Frame")
+            LabelsContainer.Size = UDim2.new(1, -20, 0, 20)
+            LabelsContainer.Position = UDim2.new(0, 10, 1, -25)
+            LabelsContainer.BackgroundTransparency = 1
+            LabelsContainer.Parent = ChartArea
+            
+            local LabelsLayout = Instance.new("UIListLayout")
+            LabelsLayout.FillDirection = Enum.FillDirection.Horizontal
+            LabelsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+            LabelsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+            LabelsLayout.Padding = UDim.new(0, 8)
+            LabelsLayout.Parent = LabelsContainer
+            
+            for i, item in ipairs(data) do
+                local LabelFrame = Instance.new("Frame")
+                LabelFrame.Size = UDim2.new(0, barWidth, 0, 20)
+                LabelFrame.BackgroundTransparency = 1
+                LabelFrame.LayoutOrder = i
+                LabelFrame.Parent = LabelsContainer
+                
+                local Label = Instance.new("TextLabel")
+                Label.Size = UDim2.new(1, 0, 1, 0)
+                Label.BackgroundTransparency = 1
+                Label.Text = item.Label
+                Label.TextColor3 = Colors.TextDim
+                Label.TextSize = 10
+                Label.Font = Enum.Font.Gotham
+                Label.TextTruncate = Enum.TextTruncate.AtEnd
+                Label.Parent = LabelFrame
+            end
+            
+            -- Initial render
+            task.wait()
+            updateChart(data)
+            
+            return {
+                SetData = function(newData)
+                    -- Update labels
+                    for _, child in ipairs(LabelsContainer:GetChildren()) do
+                        if child:IsA("Frame") then
+                            child:Destroy()
+                        end
+                    end
+                    
+                    barWidth = math.min(40, (ChartArea.AbsoluteSize.X - 20 - (#newData - 1) * 8) / #newData)
+                    
+                    for i, item in ipairs(newData) do
+                        local LabelFrame = Instance.new("Frame")
+                        LabelFrame.Size = UDim2.new(0, barWidth, 0, 20)
+                        LabelFrame.BackgroundTransparency = 1
+                        LabelFrame.LayoutOrder = i
+                        LabelFrame.Parent = LabelsContainer
+                        
+                        local Label = Instance.new("TextLabel")
+                        Label.Size = UDim2.new(1, 0, 1, 0)
+                        Label.BackgroundTransparency = 1
+                        Label.Text = item.Label
+                        Label.TextColor3 = Colors.TextDim
+                        Label.TextSize = 10
+                        Label.Font = Enum.Font.Gotham
+                        Label.TextTruncate = Enum.TextTruncate.AtEnd
+                        Label.Parent = LabelFrame
+                    end
+                    
+                    updateChart(newData)
+                end,
+                SetMax = function(newMax)
+                    maxValue = newMax
+                    updateChart(data)
+                end
+            }
         end
         
         function Tab:CreateSection(sectionName)
