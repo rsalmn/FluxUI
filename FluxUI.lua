@@ -1114,7 +1114,12 @@ function FluxUI:CreateWindow(config)
                 Tween(ButtonFrame, {BackgroundColor3 = Colors.Tertiary}, 0.2)
             end)
             
-            return Button
+            return {
+                SetVisible = function(visible)
+                    ButtonFrame.Visible = visible
+                end,
+                Instance = ButtonFrame
+            }
         end
         
         function Tab:CreateToggle(config)
@@ -1228,7 +1233,11 @@ function FluxUI:CreateWindow(config)
                     if flag and ConfigSystem.CurrentConfig then
                         ConfigSystem.CurrentConfig[flag] = toggled
                     end
-                end
+                end,
+                SetVisible = function(visible)
+                    ToggleFrame.Visible = visible
+                end,
+                Instance = ToggleFrame
             }
             
             -- Register flag
@@ -1384,7 +1393,11 @@ function FluxUI:CreateWindow(config)
                     if flag and ConfigSystem.CurrentConfig then
                         ConfigSystem.CurrentConfig[flag] = value
                     end
-                end
+                end,
+                SetVisible = function(visible)
+                    SliderFrame.Visible = visible
+                end,
+                Instance = SliderFrame
             }
             
             -- Register flag
@@ -1467,7 +1480,14 @@ function FluxUI:CreateWindow(config)
             return {
                 SetValue = function(text)
                     Textbox.Text = text
-                end
+                end,
+                GetValue = function()
+                    return Textbox.Text
+                end,
+                SetVisible = function(visible)
+                    TextboxFrame.Visible = visible
+                end,
+                Instance = TextboxFrame
             }
         end
         
@@ -1557,7 +1577,11 @@ function FluxUI:CreateWindow(config)
                 SetValue = function(keyCode)
                     currentKey = keyCode
                     KeybindButton.Text = keyCode ~= Enum.KeyCode.Unknown and keyCode.Name or "None"
-                end
+                end,
+                SetVisible = function(visible)
+                    KeybindFrame.Visible = visible
+                end,
+                Instance = KeybindFrame
             }
             
             -- Register flag
@@ -1747,7 +1771,11 @@ function FluxUI:CreateWindow(config)
                     currentColor = {R = color.R * 255, G = color.G * 255, B = color.B * 255}
                     ColorPreview.BackgroundColor3 = color
                     SafeCallback(callback, color)
-                end
+                end,
+                SetVisible = function(visible)
+                    ColorFrame.Visible = visible
+                end,
+                Instance = ColorFrame
             }
         end
         
@@ -1943,7 +1971,11 @@ function FluxUI:CreateWindow(config)
                 SetOptions = function(newOptions)
                     -- Alias for Refresh (untuk konsistensi dengan Collapsible)
                     dropdownObj.Refresh(newOptions)
-                end
+                end,
+                SetVisible = function(visible)
+                    DropdownFrame.Visible = visible
+                end,
+                Instance = DropdownFrame
             }
             
             -- Register flag
@@ -1988,7 +2020,11 @@ function FluxUI:CreateWindow(config)
             return {
                 SetText = function(newText)
                     Label.Text = newText
-                end
+                end,
+                SetVisible = function(visible)
+                    LabelFrame.Visible = visible
+                end,
+                Instance = LabelFrame
             }
         end
         
@@ -2042,7 +2078,11 @@ function FluxUI:CreateWindow(config)
                     ParagraphContent.Text = newContent
                     ParagraphContent.Size = UDim2.new(1, -20, 0, ParagraphContent.TextBounds.Y)
                     ParagraphFrame.Size = UDim2.new(1, 0, 0, 48 + ParagraphContent.TextBounds.Y)
-                end
+                end,
+                SetVisible = function(visible)
+                    ParagraphFrame.Visible = visible
+                end,
+                Instance = ParagraphFrame
             }
         end
         
@@ -2083,6 +2123,13 @@ function FluxUI:CreateWindow(config)
                 Line.BorderSizePixel = 0
                 Line.Parent = DividerFrame
             end
+            
+            return {
+                SetVisible = function(visible)
+                    DividerFrame.Visible = visible
+                end,
+                Instance = DividerFrame
+            }
         end
         
         -- ═══════════════════════════════════════════
@@ -2296,7 +2343,11 @@ function FluxUI:CreateWindow(config)
                         currentOption = ""
                         SelectedLabel.Text = "None"
                     end
-                end
+                end,
+                SetVisible = function(visible)
+                    DropdownFrame.Visible = visible
+                end,
+                Instance = DropdownFrame
             }
             
             if flag and ConfigSystem and ConfigSystem.Flags then
@@ -2501,7 +2552,11 @@ function FluxUI:CreateWindow(config)
                 SetMax = function(newMax)
                     maxValue = newMax
                     updateChart(data)
-                end
+                end,
+                SetVisible = function(visible)
+                    ChartFrame.Visible = visible
+                end,
+                Instance = ChartFrame
             }
         end
         
@@ -2536,7 +2591,11 @@ function FluxUI:CreateWindow(config)
             return {
                 SetText = function(newText)
                     SectionLabel.Text = newText
-                end
+                end,
+                SetVisible = function(visible)
+                    SectionFrame.Visible = visible
+                end,
+                Instance = SectionFrame
             }
         end
         
@@ -2667,7 +2726,12 @@ function FluxUI:CreateWindow(config)
                     Tween(ButtonFrame, {BackgroundColor3 = Colors.Background}, 0.2)
                 end)
                 
-                return Button
+                return {
+                    SetVisible = function(visible)
+                        ButtonFrame.Visible = visible
+                    end,
+                    Instance = ButtonFrame
+                }
             end
             
             -- ═══════════════════════════════════════════
@@ -2754,7 +2818,11 @@ function FluxUI:CreateWindow(config)
                         if flag and ConfigSystem.CurrentConfig then
                             ConfigSystem.CurrentConfig[flag] = toggled
                         end
-                    end
+                    end,
+                    SetVisible = function(visible)
+                        ToggleFrame.Visible = visible
+                    end,
+                    Instance = ToggleFrame
                 }
                 
                 if flag and ConfigSystem and ConfigSystem.Flags then
@@ -2897,7 +2965,11 @@ function FluxUI:CreateWindow(config)
                         if flag and ConfigSystem.CurrentConfig then
                             ConfigSystem.CurrentConfig[flag] = value
                         end
-                    end
+                    end,
+                    SetVisible = function(visible)
+                        SliderFrame.Visible = visible
+                    end,
+                    Instance = SliderFrame
                 }
                 
                 if flag and ConfigSystem and ConfigSystem.Flags then
@@ -3098,7 +3170,11 @@ function FluxUI:CreateWindow(config)
                             currentOption = options[1] or "Select"
                             DropdownLabel.Text = dropdownText .. ": " .. currentOption
                         end
-                    end
+                    end,
+                    SetVisible = function(visible)
+                        DropdownFrame.Visible = visible
+                    end,
+                    Instance = DropdownFrame
                 }
                 
                 if flag and ConfigSystem and ConfigSystem.Flags then
@@ -3176,7 +3252,11 @@ function FluxUI:CreateWindow(config)
                     end,
                     GetValue = function()
                         return Textbox.Text
-                    end
+                    end,
+                    SetVisible = function(visible)
+                        TextboxFrame.Visible = visible
+                    end,
+                    Instance = TextboxFrame
                 }
             end
             
@@ -3261,7 +3341,11 @@ function FluxUI:CreateWindow(config)
                     SetValue = function(keyCode)
                         currentKey = keyCode
                         KeybindButton.Text = keyCode ~= Enum.KeyCode.Unknown and keyCode.Name or "None"
-                    end
+                    end,
+                    SetVisible = function(visible)
+                        KeybindFrame.Visible = visible
+                    end,
+                    Instance = KeybindFrame
                 }
                 
                 if flag and ConfigSystem and ConfigSystem.Flags then
@@ -3447,7 +3531,11 @@ function FluxUI:CreateWindow(config)
                         currentColor = {R = color.R * 255, G = color.G * 255, B = color.B * 255}
                         ColorPreview.BackgroundColor3 = color
                         SafeCallback(callback, color)
-                    end
+                    end,
+                    SetVisible = function(visible)
+                        ColorFrame.Visible = visible
+                    end,
+                    Instance = ColorFrame
                 }
             end
             
@@ -3475,7 +3563,11 @@ function FluxUI:CreateWindow(config)
                 return {
                     SetText = function(newText)
                         Label.Text = newText
-                    end
+                    end,
+                    SetVisible = function(visible)
+                        LabelFrame.Visible = visible
+                    end,
+                    Instance = LabelFrame
                 }
             end
             
@@ -3517,6 +3609,13 @@ function FluxUI:CreateWindow(config)
                     Line.BorderSizePixel = 0
                     Line.Parent = DividerFrame
                 end
+                
+                return {
+                    SetVisible = function(visible)
+                        DividerFrame.Visible = visible
+                    end,
+                    Instance = DividerFrame
+                }
             end
             
             -- ═══════════════════════════════════════════
@@ -3574,7 +3673,11 @@ function FluxUI:CreateWindow(config)
                         task.wait()
                         ParagraphContent.Size = UDim2.new(1, -16, 0, ParagraphContent.TextBounds.Y)
                         ParagraphFrame.Size = UDim2.new(1, 0, 0, 35 + ParagraphContent.TextBounds.Y)
-                    end
+                    end,
+                    SetVisible = function(visible)
+                        ParagraphFrame.Visible = visible
+                    end,
+                    Instance = ParagraphFrame
                 }
             end
             
@@ -3612,7 +3715,11 @@ function FluxUI:CreateWindow(config)
                 return {
                     SetText = function(newText)
                         SectionLabel.Text = newText
-                    end
+                    end,
+                    SetVisible = function(visible)
+                        SectionFrame.Visible = visible
+                    end,
+                    Instance = SectionFrame
                 }
             end
             
@@ -3822,7 +3929,11 @@ function FluxUI:CreateWindow(config)
                     end,
                     GetValue = function()
                         return currentOption
-                    end
+                    end,
+                    SetVisible = function(visible)
+                        DropdownFrame.Visible = visible
+                    end,
+                    Instance = DropdownFrame
                 }
                 
                 if flag and ConfigSystem and ConfigSystem.Flags then
@@ -4054,7 +4165,11 @@ function FluxUI:CreateWindow(config)
                             end
                         end
                         return selected
-                    end
+                    end,
+                    SetVisible = function(visible)
+                        DropdownFrame.Visible = visible
+                    end,
+                    Instance = DropdownFrame
                 }
                 
                 if flag and ConfigSystem and ConfigSystem.Flags then
@@ -4262,7 +4377,11 @@ function FluxUI:CreateWindow(config)
                         end
                     end
                     SafeCallback(callback, selected)
-                end
+                end,
+                SetVisible = function(visible)
+                    DropdownFrame.Visible = visible
+                end,
+                Instance = DropdownFrame
             }
         end
         
