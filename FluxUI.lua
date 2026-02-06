@@ -1130,29 +1130,29 @@ function FluxUI:CreateWindow(config)
             local flag = config.Flag
             
             local ToggleFrame = Instance.new("Frame")
-            ToggleFrame.Size = UDim2.new(1, 0, 0, 40)
-            ToggleFrame.BackgroundColor3 = Colors.Tertiary
+            ToggleFrame.Size = UDim2.new(1, 0, 0, 35)
+            ToggleFrame.BackgroundColor3 = Colors.Background
             ToggleFrame.BorderSizePixel = 0
             ToggleFrame.Parent = TabContent
             
             local ToggleCorner = Instance.new("UICorner")
-            ToggleCorner.CornerRadius = UDim.new(0, 8)
+            ToggleCorner.CornerRadius = UDim.new(0, 6)
             ToggleCorner.Parent = ToggleFrame
             
             local ToggleLabel = Instance.new("TextLabel")
-            ToggleLabel.Size = UDim2.new(1, -60, 1, 0)
-            ToggleLabel.Position = UDim2.new(0, 15, 0, 0)
+            ToggleLabel.Size = UDim2.new(1, -50, 1, 0)
+            ToggleLabel.Position = UDim2.new(0, 10, 0, 0)
             ToggleLabel.BackgroundTransparency = 1
             ToggleLabel.Text = toggleText
             ToggleLabel.TextColor3 = Colors.Text
-            ToggleLabel.TextSize = 14
+            ToggleLabel.TextSize = 13
             ToggleLabel.Font = Enum.Font.Gotham
             ToggleLabel.TextXAlignment = Enum.TextXAlignment.Left
             ToggleLabel.Parent = ToggleFrame
             
             local ToggleButton = Instance.new("TextButton")
-            ToggleButton.Size = UDim2.new(0, 45, 0, 24)
-            ToggleButton.Position = UDim2.new(1, -55, 0.5, -12)
+            ToggleButton.Size = UDim2.new(0, 40, 0, 20)
+            ToggleButton.Position = UDim2.new(1, -45, 0.5, -10)
             ToggleButton.BackgroundColor3 = default and Colors.Accent or Colors.Border
             ToggleButton.BorderSizePixel = 0
             ToggleButton.Text = ""
@@ -1164,8 +1164,8 @@ function FluxUI:CreateWindow(config)
             ToggleButtonCorner.Parent = ToggleButton
             
             local ToggleCircle = Instance.new("Frame")
-            ToggleCircle.Size = UDim2.new(0, 18, 0, 18)
-            ToggleCircle.Position = default and UDim2.new(1, -21, 0.5, -9) or UDim2.new(0, 3, 0.5, -9)
+            ToggleCircle.Size = UDim2.new(0, 16, 0, 16)
+            ToggleCircle.Position = default and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
             ToggleCircle.BackgroundColor3 = Colors.Text
             ToggleCircle.BorderSizePixel = 0
             ToggleCircle.Parent = ToggleButton
@@ -1184,51 +1184,21 @@ function FluxUI:CreateWindow(config)
                 }, 0.2)
                 
                 Tween(ToggleCircle, {
-                    Position = toggled and UDim2.new(1, -21, 0.5, -9) or UDim2.new(0, 3, 0.5, -9)
+                    Position = toggled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
                 }, 0.2)
                 
                 SafeCallback(callback, toggled)
                 
-                -- Update config
                 if flag and ConfigSystem.CurrentConfig then
                     ConfigSystem.CurrentConfig[flag] = toggled
                 end
-            end)
-            
-            -- Tambahkan Touch support
-            ToggleButton.InputBegan:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.Touch then
-                    toggled = not toggled
-                    
-                    Tween(ToggleButton, {
-                        BackgroundColor3 = toggled and Colors.Accent or Colors.Border
-                    }, 0.2)
-                    
-                    Tween(ToggleCircle, {
-                        Position = toggled and UDim2.new(1, -21, 0.5, -9) or UDim2.new(0, 3, 0.5, -9)
-                    }, 0.2)
-                    
-                    SafeCallback(callback, toggled)
-                    
-                    if flag and ConfigSystem.CurrentConfig then
-                        ConfigSystem.CurrentConfig[flag] = toggled
-                    end
-                end
-            end)
-            
-            ToggleFrame.MouseEnter:Connect(function()
-                Tween(ToggleFrame, {BackgroundColor3 = Colors.Border}, 0.2)
-            end)
-            
-            ToggleFrame.MouseLeave:Connect(function()
-                Tween(ToggleFrame, {BackgroundColor3 = Colors.Tertiary}, 0.2)
             end)
             
             local toggleObj = {
                 SetValue = function(value)
                     toggled = value
                     ToggleButton.BackgroundColor3 = toggled and Colors.Accent or Colors.Border
-                    ToggleCircle.Position = toggled and UDim2.new(1, -21, 0.5, -9) or UDim2.new(0, 3, 0.5, -9)
+                    ToggleCircle.Position = toggled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
                     SafeCallback(callback, toggled)
                     if flag and ConfigSystem.CurrentConfig then
                         ConfigSystem.CurrentConfig[flag] = toggled
@@ -1240,22 +1210,12 @@ function FluxUI:CreateWindow(config)
                 Instance = ToggleFrame
             }
             
-            -- Register flag
             if flag and ConfigSystem and ConfigSystem.Flags then
                 ConfigSystem.Flags[flag] = {
                     Type = "Toggle",
-                    Set = function(value)
-                        if toggleObj and toggleObj.SetValue then
-                            toggleObj.SetValue(value)
-                        end
-                    end,
-                    Get = function()
-                        return toggled
-                    end
+                    Set = function(value) toggleObj.SetValue(value) end,
+                    Get = function() return toggled end
                 }
-                if ConfigSystem.CurrentConfig then
-                    ConfigSystem.CurrentConfig[flag] = toggled
-                end
             end
             
             return toggleObj
