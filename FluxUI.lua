@@ -1122,15 +1122,26 @@ function FluxUI:CreateWindow(config)
             }
         end
         
+        -- ═══════════════════════════════════════════
+        -- TAB: CreateToggle (Modern Nexus Style)
+        -- ═══════════════════════════════════════════
         function Tab:CreateToggle(config)
+            if type(config) == "string" then
+                config = {Name = config}
+            end
             config = config or {}
-            local toggleText = config.Name or "Toggle"
+            
+            local toggleText = config.Name or config.Text or "Toggle"
             local default = config.Default or false
             local callback = config.Callback or function() end
             local flag = config.Flag
             
+            local toggled = default
+            
+            -- Main container
             local ToggleFrame = Instance.new("Frame")
-            ToggleFrame.Size = UDim2.new(1, 0, 0, 40)
+            ToggleFrame.Name = "Toggle_" .. toggleText
+            ToggleFrame.Size = UDim2.new(1, 0, 0, 44)
             ToggleFrame.BackgroundColor3 = Colors.Tertiary
             ToggleFrame.BorderSizePixel = 0
             ToggleFrame.Parent = TabContent
@@ -1139,100 +1150,141 @@ function FluxUI:CreateWindow(config)
             ToggleCorner.CornerRadius = UDim.new(0, 8)
             ToggleCorner.Parent = ToggleFrame
             
+            local ToggleStroke = Instance.new("UIStroke")
+            ToggleStroke.Color = Colors.Border
+            ToggleStroke.Thickness = 1
+            ToggleStroke.Transparency = 0.4
+            ToggleStroke.Parent = ToggleFrame
+            
+            -- Toggle text label
             local ToggleLabel = Instance.new("TextLabel")
-            ToggleLabel.Size = UDim2.new(1, -60, 1, 0)
-            ToggleLabel.Position = UDim2.new(0, 15, 0, 0)
+            ToggleLabel.Size = UDim2.new(1, -80, 1, 0)
+            ToggleLabel.Position = UDim2.new(0, 16, 0, 0)
             ToggleLabel.BackgroundTransparency = 1
             ToggleLabel.Text = toggleText
             ToggleLabel.TextColor3 = Colors.Text
             ToggleLabel.TextSize = 14
-            ToggleLabel.Font = Enum.Font.Gotham
+            ToggleLabel.Font = Enum.Font.GothamMedium
             ToggleLabel.TextXAlignment = Enum.TextXAlignment.Left
             ToggleLabel.Parent = ToggleFrame
             
+            -- Switch track (thin line style)
+            local SwitchTrack = Instance.new("Frame")
+            SwitchTrack.Name = "SwitchTrack"
+            SwitchTrack.Size = UDim2.fromOffset(44, 6)
+            SwitchTrack.Position = UDim2.new(1, -60, 0.5, -3)
+            SwitchTrack.BackgroundColor3 = toggled and Colors.Accent or Colors.Border
+            SwitchTrack.BorderSizePixel = 0
+            SwitchTrack.Parent = ToggleFrame
+            
+            local TrackCorner = Instance.new("UICorner")
+            TrackCorner.CornerRadius = UDim.new(1, 0)
+            TrackCorner.Parent = SwitchTrack
+            
+            -- Switch fill (accent color when on)
+            local SwitchFill = Instance.new("Frame")
+            SwitchFill.Name = "SwitchFill"
+            SwitchFill.Size = toggled and UDim2.new(1, 0, 1, 0) or UDim2.new(0, 0, 1, 0)
+            SwitchFill.BackgroundColor3 = Colors.Accent
+            SwitchFill.BorderSizePixel = 0
+            SwitchFill.Parent = SwitchTrack
+            
+            local FillCorner = Instance.new("UICorner")
+            FillCorner.CornerRadius = UDim.new(1, 0)
+            FillCorner.Parent = SwitchFill
+            
+            -- Switch handle (circular knob)
+            local SwitchHandle = Instance.new("Frame")
+            SwitchHandle.Name = "SwitchHandle"
+            SwitchHandle.Size = UDim2.fromOffset(18, 18)
+            SwitchHandle.Position = toggled and UDim2.fromOffset(26, -6) or UDim2.fromOffset(0, -6)
+            SwitchHandle.BackgroundColor3 = toggled and Colors.Text or Colors.TextDim
+            SwitchHandle.BorderSizePixel = 0
+            SwitchHandle.Parent = SwitchTrack
+            
+            local HandleCorner = Instance.new("UICorner")
+            HandleCorner.CornerRadius = UDim.new(1, 0)
+            HandleCorner.Parent = SwitchHandle
+            
+            -- Handle shadow
+            local HandleShadow = Instance.new("ImageLabel")
+            HandleShadow.Name = "Shadow"
+            HandleShadow.AnchorPoint = Vector2.new(0.5, 0.5)
+            HandleShadow.BackgroundTransparency = 1
+            HandleShadow.Position = UDim2.new(0.5, 0, 0.5, 2)
+            HandleShadow.Size = UDim2.new(1, 12, 1, 12)
+            HandleShadow.ZIndex = 0
+            HandleShadow.Image = "rbxassetid://5554236805"
+            HandleShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+            HandleShadow.ImageTransparency = 0.8
+            HandleShadow.ScaleType = Enum.ScaleType.Slice
+            HandleShadow.SliceCenter = Rect.new(23, 23, 277, 277)
+            HandleShadow.Parent = SwitchHandle
+            
+            -- Clickable button overlay
             local ToggleButton = Instance.new("TextButton")
-            ToggleButton.Size = UDim2.new(0, 45, 0, 24)
-            ToggleButton.Position = UDim2.new(1, -55, 0.5, -12)
-            ToggleButton.BackgroundColor3 = default and Colors.Accent or Colors.Border
-            ToggleButton.BorderSizePixel = 0
+            ToggleButton.Size = UDim2.new(1, 0, 1, 0)
+            ToggleButton.BackgroundTransparency = 1
             ToggleButton.Text = ""
-            ToggleButton.AutoButtonColor = false
             ToggleButton.Parent = ToggleFrame
             
-            local ToggleButtonCorner = Instance.new("UICorner")
-            ToggleButtonCorner.CornerRadius = UDim.new(1, 0)
-            ToggleButtonCorner.Parent = ToggleButton
-            
-            local ToggleCircle = Instance.new("Frame")
-            ToggleCircle.Size = UDim2.new(0, 18, 0, 18)
-            ToggleCircle.Position = default and UDim2.new(1, -21, 0.5, -9) or UDim2.new(0, 3, 0.5, -9)
-            ToggleCircle.BackgroundColor3 = Colors.Text
-            ToggleCircle.BorderSizePixel = 0
-            ToggleCircle.Parent = ToggleButton
-            
-            local CircleCorner = Instance.new("UICorner")
-            CircleCorner.CornerRadius = UDim.new(1, 0)
-            CircleCorner.Parent = ToggleCircle
-            
-            local toggled = default
-            
-            ToggleButton.MouseButton1Click:Connect(function()
-                toggled = not toggled
+            local function UpdateToggle(newValue, silent)
+                toggled = newValue
                 
-                Tween(ToggleButton, {
+                -- Animate track color
+                Tween(SwitchTrack, {
                     BackgroundColor3 = toggled and Colors.Accent or Colors.Border
                 }, 0.2)
                 
-                Tween(ToggleCircle, {
-                    Position = toggled and UDim2.new(1, -21, 0.5, -9) or UDim2.new(0, 3, 0.5, -9)
+                -- Animate fill
+                Tween(SwitchFill, {
+                    Size = toggled and UDim2.new(1, 0, 1, 0) or UDim2.new(0, 0, 1, 0)
                 }, 0.2)
                 
-                SafeCallback(callback, toggled)
+                -- Animate handle position with Back easing
+                Tween(SwitchHandle, {
+                    Position = toggled and UDim2.fromOffset(26, -6) or UDim2.fromOffset(0, -6),
+                    BackgroundColor3 = toggled and Colors.Text or Colors.TextDim
+                }, 0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
                 
-                -- Update config
+                if not silent then
+                    SafeCallback(callback, toggled)
+                end
+                
                 if flag and ConfigSystem.CurrentConfig then
                     ConfigSystem.CurrentConfig[flag] = toggled
                 end
+            end
+            
+            ToggleButton.MouseButton1Click:Connect(function()
+                UpdateToggle(not toggled)
             end)
             
-            -- Tambahkan Touch support
+            -- Touch support
             ToggleButton.InputBegan:Connect(function(input)
                 if input.UserInputType == Enum.UserInputType.Touch then
-                    toggled = not toggled
-                    
-                    Tween(ToggleButton, {
-                        BackgroundColor3 = toggled and Colors.Accent or Colors.Border
-                    }, 0.2)
-                    
-                    Tween(ToggleCircle, {
-                        Position = toggled and UDim2.new(1, -21, 0.5, -9) or UDim2.new(0, 3, 0.5, -9)
-                    }, 0.2)
-                    
-                    SafeCallback(callback, toggled)
-                    
-                    if flag and ConfigSystem.CurrentConfig then
-                        ConfigSystem.CurrentConfig[flag] = toggled
-                    end
+                    UpdateToggle(not toggled)
                 end
             end)
             
-            ToggleFrame.MouseEnter:Connect(function()
-                Tween(ToggleFrame, {BackgroundColor3 = Colors.Border}, 0.2)
+            -- Hover effects
+            ToggleButton.MouseEnter:Connect(function()
+                Tween(ToggleFrame, {BackgroundColor3 = Colors.Border}, 0.15)
             end)
             
-            ToggleFrame.MouseLeave:Connect(function()
-                Tween(ToggleFrame, {BackgroundColor3 = Colors.Tertiary}, 0.2)
+            ToggleButton.MouseLeave:Connect(function()
+                Tween(ToggleFrame, {BackgroundColor3 = Colors.Tertiary}, 0.15)
             end)
             
             local toggleObj = {
-                SetValue = function(value)
-                    toggled = value
-                    ToggleButton.BackgroundColor3 = toggled and Colors.Accent or Colors.Border
-                    ToggleCircle.Position = toggled and UDim2.new(1, -21, 0.5, -9) or UDim2.new(0, 3, 0.5, -9)
-                    SafeCallback(callback, toggled)
-                    if flag and ConfigSystem.CurrentConfig then
-                        ConfigSystem.CurrentConfig[flag] = toggled
-                    end
+                SetValue = function(value, silent)
+                    UpdateToggle(value, silent)
+                end,
+                GetValue = function()
+                    return toggled
+                end,
+                SetText = function(newText)
+                    ToggleLabel.Text = tostring(newText or "")
                 end,
                 SetVisible = function(visible)
                     ToggleFrame.Visible = visible
@@ -2989,17 +3041,25 @@ function FluxUI:CreateWindow(config)
             end
             
             -- ═══════════════════════════════════════════
-            -- COLLAPSIBLE: AddToggle
+            -- COLLAPSIBLE: AddToggle (Modern Nexus Style)
             -- ═══════════════════════════════════════════
             function Collapsible:AddToggle(config)
+                if type(config) == "string" then
+                    config = {Name = config}
+                end
                 config = config or {}
-                local toggleText = config.Name or "Toggle"
+                
+                local toggleText = config.Name or config.Text or "Toggle"
                 local default = config.Default or false
                 local callback = config.Callback or function() end
                 local flag = config.Flag
                 
+                local toggled = default
+                
+                -- Main container
                 local ToggleFrame = Instance.new("Frame")
-                ToggleFrame.Size = UDim2.new(1, 0, 0, 35)
+                ToggleFrame.Name = "Toggle_" .. toggleText
+                ToggleFrame.Size = UDim2.new(1, 0, 0, 40)
                 ToggleFrame.BackgroundColor3 = Colors.Background
                 ToggleFrame.BorderSizePixel = 0
                 ToggleFrame.Parent = ContentFrame
@@ -3008,70 +3068,141 @@ function FluxUI:CreateWindow(config)
                 ToggleCorner.CornerRadius = UDim.new(0, 6)
                 ToggleCorner.Parent = ToggleFrame
                 
+                local ToggleStroke = Instance.new("UIStroke")
+                ToggleStroke.Color = Colors.Border
+                ToggleStroke.Thickness = 1
+                ToggleStroke.Transparency = 0.5
+                ToggleStroke.Parent = ToggleFrame
+                
+                -- Toggle text label
                 local ToggleLabel = Instance.new("TextLabel")
-                ToggleLabel.Size = UDim2.new(1, -50, 1, 0)
-                ToggleLabel.Position = UDim2.new(0, 10, 0, 0)
+                ToggleLabel.Size = UDim2.new(1, -70, 1, 0)
+                ToggleLabel.Position = UDim2.new(0, 12, 0, 0)
                 ToggleLabel.BackgroundTransparency = 1
                 ToggleLabel.Text = toggleText
                 ToggleLabel.TextColor3 = Colors.Text
                 ToggleLabel.TextSize = 13
-                ToggleLabel.Font = Enum.Font.Gotham
+                ToggleLabel.Font = Enum.Font.GothamMedium
                 ToggleLabel.TextXAlignment = Enum.TextXAlignment.Left
                 ToggleLabel.Parent = ToggleFrame
                 
+                -- Switch track (thin line style)
+                local SwitchTrack = Instance.new("Frame")
+                SwitchTrack.Name = "SwitchTrack"
+                SwitchTrack.Size = UDim2.fromOffset(40, 6)
+                SwitchTrack.Position = UDim2.new(1, -52, 0.5, -3)
+                SwitchTrack.BackgroundColor3 = toggled and Colors.Accent or Colors.Border
+                SwitchTrack.BorderSizePixel = 0
+                SwitchTrack.Parent = ToggleFrame
+                
+                local TrackCorner = Instance.new("UICorner")
+                TrackCorner.CornerRadius = UDim.new(1, 0)
+                TrackCorner.Parent = SwitchTrack
+                
+                -- Switch fill (accent color when on)
+                local SwitchFill = Instance.new("Frame")
+                SwitchFill.Name = "SwitchFill"
+                SwitchFill.Size = toggled and UDim2.new(1, 0, 1, 0) or UDim2.new(0, 0, 1, 0)
+                SwitchFill.BackgroundColor3 = Colors.Accent
+                SwitchFill.BorderSizePixel = 0
+                SwitchFill.Parent = SwitchTrack
+                
+                local FillCorner = Instance.new("UICorner")
+                FillCorner.CornerRadius = UDim.new(1, 0)
+                FillCorner.Parent = SwitchFill
+                
+                -- Switch handle (circular knob)
+                local SwitchHandle = Instance.new("Frame")
+                SwitchHandle.Name = "SwitchHandle"
+                SwitchHandle.Size = UDim2.fromOffset(16, 16)
+                SwitchHandle.Position = toggled and UDim2.fromOffset(24, -5) or UDim2.fromOffset(0, -5)
+                SwitchHandle.BackgroundColor3 = toggled and Colors.Text or Colors.TextDim
+                SwitchHandle.BorderSizePixel = 0
+                SwitchHandle.Parent = SwitchTrack
+                
+                local HandleCorner = Instance.new("UICorner")
+                HandleCorner.CornerRadius = UDim.new(1, 0)
+                HandleCorner.Parent = SwitchHandle
+                
+                -- Handle shadow
+                local HandleShadow = Instance.new("ImageLabel")
+                HandleShadow.Name = "Shadow"
+                HandleShadow.AnchorPoint = Vector2.new(0.5, 0.5)
+                HandleShadow.BackgroundTransparency = 1
+                HandleShadow.Position = UDim2.new(0.5, 0, 0.5, 2)
+                HandleShadow.Size = UDim2.new(1, 10, 1, 10)
+                HandleShadow.ZIndex = 0
+                HandleShadow.Image = "rbxassetid://5554236805"
+                HandleShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+                HandleShadow.ImageTransparency = 0.8
+                HandleShadow.ScaleType = Enum.ScaleType.Slice
+                HandleShadow.SliceCenter = Rect.new(23, 23, 277, 277)
+                HandleShadow.Parent = SwitchHandle
+                
+                -- Clickable button overlay
                 local ToggleButton = Instance.new("TextButton")
-                ToggleButton.Size = UDim2.new(0, 40, 0, 20)
-                ToggleButton.Position = UDim2.new(1, -45, 0.5, -10)
-                ToggleButton.BackgroundColor3 = default and Colors.Accent or Colors.Border
-                ToggleButton.BorderSizePixel = 0
+                ToggleButton.Size = UDim2.new(1, 0, 1, 0)
+                ToggleButton.BackgroundTransparency = 1
                 ToggleButton.Text = ""
-                ToggleButton.AutoButtonColor = false
                 ToggleButton.Parent = ToggleFrame
                 
-                local ToggleButtonCorner = Instance.new("UICorner")
-                ToggleButtonCorner.CornerRadius = UDim.new(1, 0)
-                ToggleButtonCorner.Parent = ToggleButton
-                
-                local ToggleCircle = Instance.new("Frame")
-                ToggleCircle.Size = UDim2.new(0, 16, 0, 16)
-                ToggleCircle.Position = default and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
-                ToggleCircle.BackgroundColor3 = Colors.Text
-                ToggleCircle.BorderSizePixel = 0
-                ToggleCircle.Parent = ToggleButton
-                
-                local CircleCorner = Instance.new("UICorner")
-                CircleCorner.CornerRadius = UDim.new(1, 0)
-                CircleCorner.Parent = ToggleCircle
-                
-                local toggled = default
-                
-                ToggleButton.MouseButton1Click:Connect(function()
-                    toggled = not toggled
+                local function UpdateToggle(newValue, silent)
+                    toggled = newValue
                     
-                    Tween(ToggleButton, {
+                    -- Animate track color
+                    Tween(SwitchTrack, {
                         BackgroundColor3 = toggled and Colors.Accent or Colors.Border
                     }, 0.2)
                     
-                    Tween(ToggleCircle, {
-                        Position = toggled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+                    -- Animate fill
+                    Tween(SwitchFill, {
+                        Size = toggled and UDim2.new(1, 0, 1, 0) or UDim2.new(0, 0, 1, 0)
                     }, 0.2)
                     
-                    SafeCallback(callback, toggled)
+                    -- Animate handle position with Back easing
+                    Tween(SwitchHandle, {
+                        Position = toggled and UDim2.fromOffset(24, -5) or UDim2.fromOffset(0, -5),
+                        BackgroundColor3 = toggled and Colors.Text or Colors.TextDim
+                    }, 0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+                    
+                    if not silent then
+                        SafeCallback(callback, toggled)
+                    end
                     
                     if flag and ConfigSystem.CurrentConfig then
                         ConfigSystem.CurrentConfig[flag] = toggled
                     end
+                end
+                
+                ToggleButton.MouseButton1Click:Connect(function()
+                    UpdateToggle(not toggled)
+                end)
+                
+                -- Touch support
+                ToggleButton.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.Touch then
+                        UpdateToggle(not toggled)
+                    end
+                end)
+                
+                -- Hover effects
+                ToggleButton.MouseEnter:Connect(function()
+                    Tween(ToggleFrame, {BackgroundColor3 = Colors.Border}, 0.15)
+                end)
+                
+                ToggleButton.MouseLeave:Connect(function()
+                    Tween(ToggleFrame, {BackgroundColor3 = Colors.Background}, 0.15)
                 end)
                 
                 local toggleObj = {
-                    SetValue = function(value)
-                        toggled = value
-                        ToggleButton.BackgroundColor3 = toggled and Colors.Accent or Colors.Border
-                        ToggleCircle.Position = toggled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
-                        SafeCallback(callback, toggled)
-                        if flag and ConfigSystem.CurrentConfig then
-                            ConfigSystem.CurrentConfig[flag] = toggled
-                        end
+                    SetValue = function(value, silent)
+                        UpdateToggle(value, silent)
+                    end,
+                    GetValue = function()
+                        return toggled
+                    end,
+                    SetText = function(newText)
+                        ToggleLabel.Text = tostring(newText or "")
                     end,
                     SetVisible = function(visible)
                         ToggleFrame.Visible = visible
