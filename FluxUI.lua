@@ -2359,24 +2359,33 @@ function FluxUI:CreateWindow(config)
                     return DropdownState.Selected
                 end,
                 SetOptions = function(newOptions)
-                    options = newOptions or {}
-                    DropdownState.FilteredOptions = options
-                    RefreshOptions()
-                    
-                    if multiSelect then
-                        local validSelected = {}
-                        for _, sel in ipairs(DropdownState.Selected) do
-                            if table.find(options, sel) then
-                                table.insert(validSelected, sel)
+                        options = newOptions or {}
+                        DropdownState.FilteredOptions = options
+                        RefreshOptions()
+                        local oldValue = DropdownState.Selected
+                        local changed = false
+                        if multiSelect then
+                            local validSelected = {}
+                            for _, sel in ipairs(DropdownState.Selected) do
+                                if table.find(options, sel) then
+                                    table.insert(validSelected, sel)
+                                end
+                            end
+                            if #validSelected ~= #DropdownState.Selected then changed = true end
+                            DropdownState.Selected = validSelected
+                        else
+                            if not table.find(options, DropdownState.Selected) then
+                                DropdownState.Selected = options[1]
+                                changed = true
                             end
                         end
-                        DropdownState.Selected = validSelected
-                    else
-                        if not table.find(options, DropdownState.Selected) then
-                            DropdownState.Selected = options[1]
+                        UpdateSelectedDisplay()
+                        if changed then
+                            SafeCallback(callback, DropdownState.Selected)
+                            if flag and ConfigSystem.CurrentConfig then
+                                ConfigSystem.CurrentConfig[flag] = DropdownState.Selected
+                            end
                         end
-                    end
-                    UpdateSelectedDisplay()
                 end,
                 Refresh = function(newOptions)
                     dropdownObj.SetOptions(newOptions)
@@ -3684,17 +3693,24 @@ function FluxUI:CreateWindow(config)
                     end,
                     GetValue = function() return DropdownState.Selected end,
                     SetOptions = function(newOptions)
-                        options = newOptions or {}
-                        DropdownState.FilteredOptions = options
-                        RefreshOptions()
-                        if multiSelect then
-                            local valid = {}
-                            for _, sel in ipairs(DropdownState.Selected) do if table.find(options, sel) then table.insert(valid, sel) end end
-                            DropdownState.Selected = valid
-                        else
-                            if not table.find(options, DropdownState.Selected) then DropdownState.Selected = options[1] end
-                        end
-                        UpdateSelectedDisplay()
+                            options = newOptions or {}
+                            DropdownState.FilteredOptions = options
+                            RefreshOptions()
+                            local oldValue = DropdownState.Selected
+                            local changed = false
+                            if multiSelect then
+                                local valid = {}
+                                for _, sel in ipairs(DropdownState.Selected) do if table.find(options, sel) then table.insert(valid, sel) end end
+                                if #valid ~= #DropdownState.Selected then changed = true end
+                                DropdownState.Selected = valid
+                            else
+                                if not table.find(options, DropdownState.Selected) then DropdownState.Selected = options[1] changed = true end
+                            end
+                            UpdateSelectedDisplay()
+                            if changed then
+                                SafeCallback(callback, DropdownState.Selected)
+                                if flag and ConfigSystem.CurrentConfig then ConfigSystem.CurrentConfig[flag] = DropdownState.Selected end
+                            end
                     end,
                     Refresh = function(newOptions) dropdownObj.SetOptions(newOptions) end,
                     Open = function() OpenDropdown() end,
@@ -4456,12 +4472,16 @@ function FluxUI:CreateWindow(config)
                         end
                     end,
                     SetOptions = function(newOptions)
-                        options = newOptions
-                        filterOptions(SearchBox.Text)
-                        if not table.find(options, currentOption) then
-                            currentOption = ""
-                            SelectedLabel.Text = "None"
-                        end
+                            options = newOptions or {}
+                            filterOptions(SearchBox.Text)
+                            if not table.find(options, currentOption) then
+                                currentOption = options[1] or ""
+                                SelectedLabel.Text = currentOption ~= "" and currentOption or "None"
+                                SafeCallback(callback, currentOption)
+                                if flag and ConfigSystem.CurrentConfig then
+                                    ConfigSystem.CurrentConfig[flag] = currentOption
+                                end
+                            end
                     end,
                     GetValue = function()
                         return currentOption
