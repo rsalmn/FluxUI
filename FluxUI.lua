@@ -2469,16 +2469,29 @@ function FluxUI:CreateWindow(config)
                     return DropdownState.Selected
                 end,
                 SetOptions = function(newOptions)
+                        print("[Debug] SetOptions called")
+                        print("[Debug] New Options Type:", type(newOptions))
+                        if type(newOptions) == "table" then
+                            print("[Debug] New Options Count:", #newOptions)
+                            print("[Debug] New Option 1:", newOptions[1])
+                        end
+                        
                         options = newOptions or {}
+                        print("[Debug] Upvalue 'options' updated. Count:", #options)
+                        
                         DropdownState.FilteredOptions = options
                         RefreshOptions()
+                        
                         local oldValue = DropdownState.Selected
+                        print("[Debug] Old Selection:", oldValue)
+                        
                         local changed = false
                         local silent = false
                         if type(newOptions) == "table" and newOptions._silent then
                             silent = true
                             newOptions = newOptions.options or newOptions
                         end
+                        
                         if multiSelect then
                             local validSelected = {}
                             for _, sel in ipairs(DropdownState.Selected) do
@@ -2490,12 +2503,18 @@ function FluxUI:CreateWindow(config)
                             DropdownState.Selected = validSelected
                         else
                             if not table.find(options, DropdownState.Selected) then
+                                print("[Debug] Old selection not found in new options.")
                                 DropdownState.Selected = options[1]
+                                print("[Debug] New Selection set to options[1]:", DropdownState.Selected)
                                 changed = true
+                            else
+                                print("[Debug] Old selection found in new options.")
                             end
                         end
+                        
                         UpdateSelectedDisplay()
                         if changed and not silent then
+                            print("[Debug] Triggering Callback with:", DropdownState.Selected)
                             SafeCallback(callback, DropdownState.Selected)
                             if flag and ConfigSystem.CurrentConfig then
                                 ConfigSystem.CurrentConfig[flag] = DropdownState.Selected
