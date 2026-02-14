@@ -2448,7 +2448,16 @@ function FluxUI:CreateWindow(config)
             
             local dropdownObj 
             dropdownObj = {
-                SetValue = function(value, silent)
+                SetValue = function(self, value, silent)
+                    -- Handle colon syntax if self is passed as first arg
+                    if self == dropdownObj then
+                        -- Called as :SetValue(value, silent)
+                    else
+                        -- Called as .SetValue(value, silent)
+                        silent = value
+                        value = self
+                    end
+                    
                     if multiSelect then
                         DropdownState.Selected = type(value) == "table" and value or {}
                     else
@@ -2468,23 +2477,20 @@ function FluxUI:CreateWindow(config)
                 GetValue = function()
                     return DropdownState.Selected
                 end,
-                SetOptions = function(newOptions)
-                        print("[Debug] SetOptions called")
-                        print("[Debug] New Options Type:", type(newOptions))
-                        if type(newOptions) == "table" then
-                            print("[Debug] New Options Count:", #newOptions)
-                            print("[Debug] New Option 1:", newOptions[1])
+                SetOptions = function(self, newOptions)
+                        -- Handle colon syntax
+                        if self == dropdownObj then
+                            -- Called as :SetOptions(newOptions)
+                        else
+                            -- Called as .SetOptions(newOptions)
+                            newOptions = self
                         end
                         
                         options = newOptions or {}
-                        print("[Debug] Upvalue 'options' updated. Count:", #options)
-                        
                         DropdownState.FilteredOptions = options
                         RefreshOptions()
                         
                         local oldValue = DropdownState.Selected
-                        print("[Debug] Old Selection:", oldValue)
-                        
                         local changed = false
                         local silent = false
                         if type(newOptions) == "table" and newOptions._silent then
@@ -2503,23 +2509,34 @@ function FluxUI:CreateWindow(config)
                             DropdownState.Selected = validSelected
                         else
                             if not table.find(options, DropdownState.Selected) then
-                                print("[Debug] Old selection not found in new options.")
                                 DropdownState.Selected = options[1]
-                                print("[Debug] New Selection set to options[1]:", DropdownState.Selected)
                                 changed = true
-                            else
-                                print("[Debug] Old selection found in new options.")
                             end
                         end
                         
                         UpdateSelectedDisplay()
                         if changed and not silent then
-                            print("[Debug] Triggering Callback with:", DropdownState.Selected)
                             SafeCallback(callback, DropdownState.Selected)
                             if flag and ConfigSystem.CurrentConfig then
                                 ConfigSystem.CurrentConfig[flag] = DropdownState.Selected
                             end
                         end
+                end,
+                Refresh = function(self, newOptions, silent)
+                    -- Handle colon syntax
+                    if self == dropdownObj then
+                         if silent then
+                            dropdownObj.SetOptions(dropdownObj, {_silent=true, options=newOptions})
+                        else
+                            dropdownObj.SetOptions(dropdownObj, newOptions)
+                        end
+                    else
+                         if newOptions then -- silent arg in dot syntax is 2nd arg
+                            dropdownObj.SetOptions({_silent=true, options=self}) -- self is newOptions
+                        else
+                            dropdownObj.SetOptions(self) -- self is newOptions
+                        end
+                    end
                 end,
                 Refresh = function(newOptions, silent)
                     if silent then
@@ -3818,7 +3835,8 @@ function FluxUI:CreateWindow(config)
                 
                 local dropdownObj
                 dropdownObj = {
-                    SetValue = function(value, silent)
+                SetValue = function(self, value, silent)
+                        if self == dropdownObj then else silent = value value = self end
                         if multiSelect then DropdownState.Selected = type(value) == "table" and value or {}
                         else DropdownState.Selected = value end
                         UpdateSelectedDisplay()
@@ -3829,7 +3847,8 @@ function FluxUI:CreateWindow(config)
                         end
                     end,
                     GetValue = function() return DropdownState.Selected end,
-                    SetOptions = function(newOptions)
+                    SetOptions = function(self, newOptions)
+                            if self == dropdownObj then else newOptions = self end
                             options = newOptions or {}
                             DropdownState.FilteredOptions = options
                             RefreshOptions()
@@ -3855,11 +3874,13 @@ function FluxUI:CreateWindow(config)
                             end
                     end,
 
-                        Refresh = function(newOptions, silent)
-                            if silent then
-                                dropdownObj.SetOptions({_silent=true, options=newOptions})
+                        Refresh = function(self, newOptions, silent)
+                            if self == dropdownObj then
+                                if silent then dropdownObj.SetOptions(dropdownObj, {_silent=true, options=newOptions})
+                                else dropdownObj.SetOptions(dropdownObj, newOptions) end
                             else
-                                dropdownObj.SetOptions(newOptions)
+                                if newOptions then dropdownObj.SetOptions({_silent=true, options=self})
+                                else dropdownObj.SetOptions(self) end
                             end
                         end,
                     Open = function() OpenDropdown() end,
