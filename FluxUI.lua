@@ -3373,13 +3373,9 @@ function FluxUI:CreateWindow(config)
                 ButtonCorner.CornerRadius = UDim.new(0, 6)
                 ButtonCorner.Parent = DropdownButton
                 
-                local ButtonStroke = Instance.new("UIStroke")
-                ButtonStroke.Color = Colors.Border
-                ButtonStroke.Thickness = 1
-                ButtonStroke.Transparency = 0.7
-                ButtonStroke.Parent = DropdownButton
-                
                 AddStroke(DropdownButton, Colors.Border, 1)
+                
+
                 
                 local ButtonContent = Instance.new("Frame")
                 ButtonContent.Size = UDim2.new(1, -20, 1, 0)
