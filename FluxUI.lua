@@ -33,6 +33,56 @@ local function Tween(object, properties, duration, style, direction)
     return tween
 end
 
+-- UI Utilities
+local function MakeRipple(object)
+    local Ripple = Instance.new("Frame")
+    Ripple.Name = "Ripple"
+    Ripple.BackgroundTransparency = 0.6
+    Ripple.BorderSizePixel = 0
+    Ripple.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Ripple.ZIndex = object.ZIndex + 1
+    Ripple.Parent = object
+    
+    -- Calculate ripple size
+    local mouse = UserInputService:GetMouseLocation()
+    local objectAbsolutePosition = object.AbsolutePosition
+    local objectAbsoluteSize = object.AbsoluteSize
+    
+    local x = mouse.X - objectAbsolutePosition.X
+    local y = mouse.Y - objectAbsolutePosition.Y
+    
+    Ripple.Position = UDim2.new(0, x, 0, y)
+    Ripple.Size = UDim2.new(0, 0, 0, 0)
+    
+    local maxSize = math.max(objectAbsoluteSize.X, objectAbsoluteSize.Y) * 1.5
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(1, 0)
+    corner.Parent = Ripple
+    
+    Ripple.Parent = object
+    
+    -- Animate
+    Tween(Ripple, {
+        Size = UDim2.new(0, maxSize, 0, maxSize),
+        Position = UDim2.new(0, x - maxSize/2, 0, y - maxSize/2),
+        BackgroundTransparency = 1
+    }, 0.5)
+    
+    task.delay(0.5, function()
+        Ripple:Destroy()
+    end)
+end
+
+local function AddStroke(object, color, thickness, transparency)
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = color or Color3.fromRGB(255, 255, 255)
+    stroke.Thickness = thickness or 1
+    stroke.Transparency = transparency or 0.1
+    stroke.Parent = object
+    return stroke
+end
+
 -- Safe callback wrapper
 local function SafeCallback(callback, ...)
     if callback and type(callback) == "function" then
@@ -419,6 +469,16 @@ function FluxUI:CreateWindow(config)
     
     -- Theme Colors
     local Themes = {
+        Modern = {
+            Background = Color3.fromRGB(15, 15, 20),
+            Secondary = Color3.fromRGB(25, 25, 30),
+            Tertiary = Color3.fromRGB(35, 35, 40),
+            Accent = Color3.fromRGB(0, 122, 255),
+            AccentHover = Color3.fromRGB(10, 132, 255),
+            Text = Color3.fromRGB(255, 255, 255),
+            TextDim = Color3.fromRGB(150, 150, 160),
+            Border = Color3.fromRGB(50, 50, 60)
+        },
         Dark = {
             Background = Color3.fromRGB(20, 20, 25),
             Secondary = Color3.fromRGB(30, 30, 35),
@@ -516,6 +576,8 @@ function FluxUI:CreateWindow(config)
     MainFrame.ClipsDescendants = true
     MainFrame.Parent = ScreenGui
     
+    AddStroke(MainFrame, Colors.Border, 1)
+    
     local MainCorner = Instance.new("UICorner")
     MainCorner.CornerRadius = UDim.new(0, 12)
     MainCorner.Parent = MainFrame
@@ -538,9 +600,15 @@ function FluxUI:CreateWindow(config)
     local TopBar = Instance.new("Frame")
     TopBar.Name = "TopBar"
     TopBar.Size = UDim2.new(1, 0, 0, 45)
-    TopBar.BackgroundColor3 = Colors.Secondary
     TopBar.BorderSizePixel = 0
     TopBar.Parent = MainFrame
+    
+    local TopBarDivider = Instance.new("Frame")
+    TopBarDivider.Size = UDim2.new(1, 0, 0, 1)
+    TopBarDivider.Position = UDim2.new(0, 0, 1, 0)
+    TopBarDivider.BackgroundColor3 = Colors.Border
+    TopBarDivider.BorderSizePixel = 0
+    TopBarDivider.Parent = TopBar
     
     local TopBarCorner = Instance.new("UICorner")
     TopBarCorner.CornerRadius = UDim.new(0, 12)
@@ -1036,13 +1104,13 @@ function FluxUI:CreateWindow(config)
         -- Tab Button Click
         TabButton.MouseButton1Click:Connect(function()
             for _, tab in pairs(Window.Tabs) do
-                tab.Button.BackgroundColor3 = Colors.Tertiary
-                tab.Label.TextColor3 = Colors.TextDim
+                Tween(tab.Button, {BackgroundColor3 = Colors.Tertiary}, 0.2)
+                Tween(tab.Label, {TextColor3 = Colors.TextDim}, 0.2)
                 tab.Content.Visible = false
             end
             
-            TabButton.BackgroundColor3 = Colors.Accent
-            TabLabel.TextColor3 = Colors.Text
+            Tween(TabButton, {BackgroundColor3 = Colors.Accent}, 0.2)
+            Tween(TabLabel, {TextColor3 = Colors.Text}, 0.2)
             TabContent.Visible = true
             Window.CurrentTab = Tab
         end)
@@ -1086,6 +1154,8 @@ function FluxUI:CreateWindow(config)
             ButtonFrame.BorderSizePixel = 0
             ButtonFrame.Parent = TabContent
             
+            AddStroke(ButtonFrame, Colors.Border, 1)
+            
             local ButtonCorner = Instance.new("UICorner")
             ButtonCorner.CornerRadius = UDim.new(0, 8)
             ButtonCorner.Parent = ButtonFrame
@@ -1100,8 +1170,9 @@ function FluxUI:CreateWindow(config)
             Button.Parent = ButtonFrame
             
             Button.MouseButton1Click:Connect(function()
+                MakeRipple(ButtonFrame)
                 Tween(ButtonFrame, {BackgroundColor3 = Colors.Accent}, 0.1)
-                wait(0.1)
+                task.wait(0.1)
                 Tween(ButtonFrame, {BackgroundColor3 = Colors.Tertiary}, 0.1)
                 SafeCallback(callback)
             end)
@@ -1138,6 +1209,8 @@ function FluxUI:CreateWindow(config)
             local ToggleCorner = Instance.new("UICorner")
             ToggleCorner.CornerRadius = UDim.new(0, 6)
             ToggleCorner.Parent = ToggleFrame
+            
+            AddStroke(ToggleFrame, Colors.Border, 1)
             
             local ToggleLabel = Instance.new("TextLabel")
             ToggleLabel.Size = UDim2.new(1, -50, 1, 0)
@@ -1185,7 +1258,7 @@ function FluxUI:CreateWindow(config)
                 
                 Tween(ToggleCircle, {
                     Position = toggled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
-                }, 0.2)
+                }, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
                 
                 SafeCallback(callback, toggled)
                 
@@ -1237,6 +1310,8 @@ function FluxUI:CreateWindow(config)
             SliderFrame.BorderSizePixel = 0
             SliderFrame.Parent = TabContent
             
+            AddStroke(SliderFrame, Colors.Border, 1)
+            
             local SliderCorner = Instance.new("UICorner")
             SliderCorner.CornerRadius = UDim.new(0, 8)
             SliderCorner.Parent = SliderFrame
@@ -1284,6 +1359,30 @@ function FluxUI:CreateWindow(config)
             SliderFillCorner.CornerRadius = UDim.new(1, 0)
             SliderFillCorner.Parent = SliderFill
             
+            -- Tooltip
+            local Tooltip = Instance.new("Frame")
+            Tooltip.Size = UDim2.new(0, 30, 0, 20)
+            Tooltip.Position = UDim2.new(1, -15, 0, -25)
+            Tooltip.BackgroundColor3 = Colors.Accent
+            Tooltip.BorderSizePixel = 0
+            Tooltip.Parent = SliderFill
+            
+            local TooltipCorner = Instance.new("UICorner")
+            TooltipCorner.CornerRadius = UDim.new(0, 4)
+            TooltipCorner.Parent = Tooltip
+            
+            local TooltipText = Instance.new("TextLabel")
+            TooltipText.Size = UDim2.new(1, 0, 1, 0)
+            TooltipText.BackgroundTransparency = 1
+            TooltipText.Text = tostring(default)
+            TooltipText.TextColor3 = Colors.Text
+            TooltipText.TextSize = 12
+            TooltipText.Font = Enum.Font.GothamBold
+            TooltipText.Parent = Tooltip
+            
+            -- Hide tooltip when not dragging?
+            Tooltip.Visible = false
+            
             local SliderButton = Instance.new("TextButton")
             SliderButton.Size = UDim2.new(1, 0, 1, 0)
             SliderButton.Position = UDim2.new(0, 0, 0, 0)
@@ -1295,17 +1394,22 @@ function FluxUI:CreateWindow(config)
             
             SliderButton.MouseButton1Down:Connect(function()
                 dragging = true
+                Tween(Tooltip, {BackgroundTransparency = 0}, 0.2)
+                Tween(TooltipText, {TextTransparency = 0}, 0.2)
+                Tooltip.Visible = true
             end)
 
             SliderButton.InputBegan:Connect(function(input)
                 if input.UserInputType == Enum.UserInputType.Touch then
                     dragging = true
+                    Tooltip.Visible = true
                 end
             end)
             
             UserInputService.InputEnded:Connect(function(input)
                 if input.UserInputType == Enum.UserInputType.MouseButton1 then
                     dragging = false
+                    Tooltip.Visible = false
                 end
             end)
             
@@ -1318,6 +1422,7 @@ function FluxUI:CreateWindow(config)
                 
                 SliderValue.Text = tostring(value)
                 Tween(SliderFill, {Size = UDim2.new(percentage, 0, 1, 0)}, 0.1)
+                TooltipText.Text = tostring(value)
                 SafeCallback(callback, value)
                 
                 if flag and ConfigSystem.CurrentConfig then
@@ -1335,6 +1440,7 @@ function FluxUI:CreateWindow(config)
                     
                     SliderValue.Text = tostring(value)
                     SliderFill.Size = UDim2.new(percentage, 0, 1, 0)
+                    TooltipText.Text = tostring(value)
                     SafeCallback(callback, value)
                     
                     if flag and ConfigSystem.CurrentConfig then
@@ -1790,11 +1896,14 @@ function FluxUI:CreateWindow(config)
             ButtonCorner.CornerRadius = UDim.new(0, 8)
             ButtonCorner.Parent = DropdownButton
             
-            local ButtonStroke = Instance.new("UIStroke")
-            ButtonStroke.Color = Colors.Border
-            ButtonStroke.Thickness = 1
-            ButtonStroke.Transparency = 0.5
-            ButtonStroke.Parent = DropdownButton
+            AddStroke(DropdownButton, Colors.Border, 1)
+            
+            -- Legacy Stroke Removal
+            -- local ButtonStroke = Instance.new("UIStroke")
+            -- ButtonStroke.Color = Colors.Border
+            -- ButtonStroke.Thickness = 1
+            -- ButtonStroke.Transparency = 0.5
+            -- ButtonStroke.Parent = DropdownButton
             
             -- Button Content
             local ButtonContent = Instance.new("Frame")
@@ -3269,6 +3378,8 @@ function FluxUI:CreateWindow(config)
                 ButtonStroke.Thickness = 1
                 ButtonStroke.Transparency = 0.7
                 ButtonStroke.Parent = DropdownButton
+                
+                AddStroke(DropdownButton, Colors.Border, 1)
                 
                 local ButtonContent = Instance.new("Frame")
                 ButtonContent.Size = UDim2.new(1, -20, 1, 0)
