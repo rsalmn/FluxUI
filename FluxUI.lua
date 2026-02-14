@@ -2364,6 +2364,11 @@ function FluxUI:CreateWindow(config)
                         RefreshOptions()
                         local oldValue = DropdownState.Selected
                         local changed = false
+                        local silent = false
+                        if type(newOptions) == "table" and newOptions._silent then
+                            silent = true
+                            newOptions = newOptions.options or newOptions
+                        end
                         if multiSelect then
                             local validSelected = {}
                             for _, sel in ipairs(DropdownState.Selected) do
@@ -2380,7 +2385,7 @@ function FluxUI:CreateWindow(config)
                             end
                         end
                         UpdateSelectedDisplay()
-                        if changed then
+                        if changed and not silent then
                             SafeCallback(callback, DropdownState.Selected)
                             if flag and ConfigSystem.CurrentConfig then
                                 ConfigSystem.CurrentConfig[flag] = DropdownState.Selected
@@ -2388,7 +2393,11 @@ function FluxUI:CreateWindow(config)
                         end
                 end,
                 Refresh = function(newOptions)
-                    dropdownObj.SetOptions(newOptions)
+                        if silent then
+                            dropdownObj.SetOptions({_silent=true, options=newOptions})
+                        else
+                            dropdownObj.SetOptions(newOptions)
+                        end
                 end,
                 Open = function()
                     OpenDropdown()
@@ -3698,6 +3707,11 @@ function FluxUI:CreateWindow(config)
                             RefreshOptions()
                             local oldValue = DropdownState.Selected
                             local changed = false
+                            local silent = false
+                            if type(newOptions) == "table" and newOptions._silent then
+                                silent = true
+                                newOptions = newOptions.options or newOptions
+                            end
                             if multiSelect then
                                 local valid = {}
                                 for _, sel in ipairs(DropdownState.Selected) do if table.find(options, sel) then table.insert(valid, sel) end end
@@ -3707,12 +3721,19 @@ function FluxUI:CreateWindow(config)
                                 if not table.find(options, DropdownState.Selected) then DropdownState.Selected = options[1] changed = true end
                             end
                             UpdateSelectedDisplay()
-                            if changed then
+                            if changed and not silent then
                                 SafeCallback(callback, DropdownState.Selected)
                                 if flag and ConfigSystem.CurrentConfig then ConfigSystem.CurrentConfig[flag] = DropdownState.Selected end
                             end
                     end,
                     Refresh = function(newOptions) dropdownObj.SetOptions(newOptions) end,
+                        Refresh = function(newOptions, silent)
+                            if silent then
+                                dropdownObj.SetOptions({_silent=true, options=newOptions})
+                            else
+                                dropdownObj.SetOptions(newOptions)
+                            end
+                        end,
                     Open = function() OpenDropdown() end,
                     Close = function() CloseDropdown() end,
                     SetVisible = function(visible)
