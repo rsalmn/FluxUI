@@ -2446,7 +2446,8 @@ function FluxUI:CreateWindow(config)
             RefreshOptions()
             UpdateSelectedDisplay()
             
-            local dropdownObj = {
+            local dropdownObj 
+            dropdownObj = {
                 SetValue = function(value, silent)
                     if multiSelect then
                         DropdownState.Selected = type(value) == "table" and value or {}
@@ -2501,12 +2502,12 @@ function FluxUI:CreateWindow(config)
                             end
                         end
                 end,
-                Refresh = function(newOptions)
-                        if silent then
-                            dropdownObj.SetOptions({_silent=true, options=newOptions})
-                        else
-                            dropdownObj.SetOptions(newOptions)
-                        end
+                Refresh = function(newOptions, silent)
+                    if silent then
+                        dropdownObj.SetOptions({_silent=true, options=newOptions})
+                    else
+                        dropdownObj.SetOptions(newOptions)
+                    end
                 end,
                 Open = function()
                     OpenDropdown()
@@ -3796,7 +3797,8 @@ function FluxUI:CreateWindow(config)
                 RefreshOptions()
                 UpdateSelectedDisplay()
                 
-                local dropdownObj = {
+                local dropdownObj
+                dropdownObj = {
                     SetValue = function(value, silent)
                         if multiSelect then DropdownState.Selected = type(value) == "table" and value or {}
                         else DropdownState.Selected = value end
@@ -3833,7 +3835,7 @@ function FluxUI:CreateWindow(config)
                                 if flag and ConfigSystem.CurrentConfig then ConfigSystem.CurrentConfig[flag] = DropdownState.Selected end
                             end
                     end,
-                    Refresh = function(newOptions) dropdownObj.SetOptions(newOptions) end,
+
                         Refresh = function(newOptions, silent)
                             if silent then
                                 dropdownObj.SetOptions({_silent=true, options=newOptions})
