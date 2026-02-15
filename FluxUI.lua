@@ -230,7 +230,7 @@ local function CreateNotification(config)
         local NotifList = Instance.new("UIListLayout")
         NotifList.SortOrder = Enum.SortOrder.LayoutOrder
         NotifList.Padding = UDim.new(0, 10)
-        NotifList.VerticalAlignment = Enum.VerticalAlignment.End
+        NotifList.VerticalAlignment = Enum.VerticalAlignment.Bottom
         NotifList.Parent = NotificationHolder
     end
     
