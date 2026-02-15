@@ -83,6 +83,56 @@ local function AddStroke(object, color, thickness, transparency)
     return stroke
 end
 
+local Tooltip = nil
+local function AddTooltip(object, text)
+    if not text then return end
+    
+    object.MouseEnter:Connect(function()
+        if Tooltip then Tooltip:Destroy() Tooltip = nil end
+        
+        Tooltip = Instance.new("TextLabel")
+        Tooltip.Name = "Tooltip"
+        Tooltip.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+        Tooltip.TextColor3 = Color3.fromRGB(255, 255, 255)
+        Tooltip.TextSize = 12
+        Tooltip.Font = Enum.Font.Gotham
+        Tooltip.Text = text
+        Tooltip.ZIndex = 1000
+        Tooltip.Parent = object:FindFirstAncestorWhichIsA("ScreenGui") or object.Parent
+        
+        local textBounds = Tooltip.TextBounds
+        Tooltip.Size = UDim2.fromOffset(textBounds.X + 10, textBounds.Y + 6)
+        
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = Color3.fromRGB(60, 60, 70)
+        stroke.Thickness = 1
+        stroke.Parent = Tooltip
+        
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 4)
+        corner.Parent = Tooltip
+        
+        -- Follow mouse
+        local mouseConn
+        mouseConn = game:GetService("RunService").RenderStepped:Connect(function()
+            if not object or not object.Parent or not Tooltip or not Tooltip.Parent then
+                if mouseConn then mouseConn:Disconnect() end
+                return
+            end
+            local mouse = UserInputService:GetMouseLocation()
+            Tooltip.Position = UDim2.fromOffset(mouse.X + 15, mouse.Y + 15)
+        end)
+        
+        -- Cleanup on leave
+        local leaveConn
+        leaveConn = object.MouseLeave:Connect(function()
+            if Tooltip then Tooltip:Destroy() Tooltip = nil end
+            if mouseConn then mouseConn:Disconnect() end
+            if leaveConn then leaveConn:Disconnect() end
+        end)
+    end)
+end
+
 -- Safe callback wrapper
 local function SafeCallback(callback, ...)
     if callback and type(callback) == "function" then
@@ -169,17 +219,18 @@ local function CreateNotification(config)
     local type = config.Type or "Default" -- Default, Success, Warning, Error
     
     if not NotificationHolder then
+        local screenGui = CreateScreenGui("FluxUI_Notifications")
         NotificationHolder = Instance.new("Frame")
         NotificationHolder.Name = "NotificationHolder"
         NotificationHolder.Size = UDim2.new(0, 300, 1, 0)
         NotificationHolder.Position = UDim2.new(1, -310, 0, 10)
         NotificationHolder.BackgroundTransparency = 1
-        NotificationHolder.Parent = CreateScreenGui("FluxUI_Notifications")
+        NotificationHolder.Parent = screenGui
         
         local NotifList = Instance.new("UIListLayout")
         NotifList.SortOrder = Enum.SortOrder.LayoutOrder
         NotifList.Padding = UDim.new(0, 10)
-        NotifList.VerticalAlignment = Enum.VerticalAlignment.Top
+        NotifList.VerticalAlignment = Enum.VerticalAlignment.End
         NotifList.Parent = NotificationHolder
     end
     
@@ -191,75 +242,88 @@ local function CreateNotification(config)
     }
     
     local NotifFrame = Instance.new("Frame")
-    NotifFrame.Size = UDim2.new(1, 0, 0, 0)
-    NotifFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-    NotifFrame.BorderSizePixel = 0
+    NotifFrame.Name = "Notification"
+    NotifFrame.BackgroundTransparency = 1
+    NotifFrame.Size = UDim2.new(1, 0, 0, 0) -- Start small
     NotifFrame.ClipsDescendants = true
     NotifFrame.Parent = NotificationHolder
     
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Name = "Main"
+    MainFrame.Size = UDim2.new(1, 0, 0, 0) -- Calculated later
+    MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    MainFrame.BorderSizePixel = 0
+    MainFrame.Parent = NotifFrame
+    
     local NotifCorner = Instance.new("UICorner")
-    NotifCorner.CornerRadius = UDim.new(0, 10)
-    NotifCorner.Parent = NotifFrame
+    NotifCorner.CornerRadius = UDim.new(0, 8)
+    NotifCorner.Parent = MainFrame
     
-    local NotifAccent = Instance.new("Frame")
-    NotifAccent.Size = UDim2.new(0, 4, 1, 0)
-    NotifAccent.BackgroundColor3 = typeColors[type] or typeColors.Default
-    NotifAccent.BorderSizePixel = 0
-    NotifAccent.Parent = NotifFrame
+    AddStroke(MainFrame, Color3.fromRGB(60, 60, 70), 1)
     
-    local NotifAccentCorner = Instance.new("UICorner")
-    NotifAccentCorner.CornerRadius = UDim.new(0, 10)
-    NotifAccentCorner.Parent = NotifAccent
+    local AccentBar = Instance.new("Frame")
+    AccentBar.Name = "Accent"
+    AccentBar.Size = UDim2.new(0, 4, 1, 0)
+    AccentBar.BackgroundColor3 = typeColors[type] or typeColors.Default
+    AccentBar.BorderSizePixel = 0
+    AccentBar.Parent = MainFrame
     
-    local NotifTitle = Instance.new("TextLabel")
-    NotifTitle.Size = UDim2.new(1, -50, 0, 20)
-    NotifTitle.Position = UDim2.new(0, 15, 0, 8)
-    NotifTitle.BackgroundTransparency = 1
-    NotifTitle.Text = title
-    NotifTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-    NotifTitle.TextSize = 14
-    NotifTitle.Font = Enum.Font.GothamBold
-    NotifTitle.TextXAlignment = Enum.TextXAlignment.Left
-    NotifTitle.Parent = NotifFrame
+    local AccentCorner = Instance.new("UICorner")
+    AccentCorner.CornerRadius = UDim.new(0, 8)
+    AccentCorner.Parent = AccentBar
     
-    local NotifContent = Instance.new("TextLabel")
-    NotifContent.Size = UDim2.new(1, -30, 0, 1000)
-    NotifContent.Position = UDim2.new(0, 15, 0, 30)
-    NotifContent.BackgroundTransparency = 1
-    NotifContent.Text = content
-    NotifContent.TextColor3 = Color3.fromRGB(180, 180, 190)
-    NotifContent.TextSize = 12
-    NotifContent.Font = Enum.Font.Gotham
-    NotifContent.TextXAlignment = Enum.TextXAlignment.Left
-    NotifContent.TextYAlignment = Enum.TextYAlignment.Top
-    NotifContent.TextWrapped = true
-    NotifContent.Parent = NotifFrame
+    local TitleLabel = Instance.new("TextLabel")
+    TitleLabel.Name = "Title"
+    TitleLabel.Size = UDim2.new(1, -40, 0, 20)
+    TitleLabel.Position = UDim2.new(0, 15, 0, 8)
+    TitleLabel.BackgroundTransparency = 1
+    TitleLabel.Text = title
+    TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TitleLabel.TextSize = 14
+    TitleLabel.Font = Enum.Font.GothamBold
+    TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TitleLabel.Parent = MainFrame
     
-    NotifContent.Size = UDim2.new(1, -30, 0, NotifContent.TextBounds.Y)
+    local ContentLabel = Instance.new("TextLabel")
+    ContentLabel.Name = "Content"
+    ContentLabel.Size = UDim2.new(1, -30, 0, 0)
+    ContentLabel.Position = UDim2.new(0, 15, 0, 30)
+    ContentLabel.BackgroundTransparency = 1
+    ContentLabel.Text = content
+    ContentLabel.TextColor3 = Color3.fromRGB(180, 180, 190)
+    ContentLabel.TextSize = 13
+    ContentLabel.Font = Enum.Font.Gotham
+    ContentLabel.TextXAlignment = Enum.TextXAlignment.Left
+    ContentLabel.TextYAlignment = Enum.TextYAlignment.Top
+    ContentLabel.TextWrapped = true
+    ContentLabel.AutomaticSize = Enum.AutomaticSize.Y
+    ContentLabel.Parent = MainFrame
     
-    local totalHeight = 45 + NotifContent.TextBounds.Y
+    local ProgressBar = Instance.new("Frame")
+    ProgressBar.Name = "ProgressBar"
+    ProgressBar.Size = UDim2.new(1, -4, 0, 2)
+    ProgressBar.Position = UDim2.new(0, 4, 1, -2)
+    ProgressBar.BackgroundColor3 = typeColors[type] or typeColors.Default
+    ProgressBar.BorderSizePixel = 0
+    ProgressBar.Parent = MainFrame
     
-    local CloseButton = Instance.new("TextButton")
-    CloseButton.Size = UDim2.new(0, 20, 0, 20)
-    CloseButton.Position = UDim2.new(1, -28, 0, 8)
-    CloseButton.BackgroundTransparency = 1
-    CloseButton.Text = "×"
-    CloseButton.TextColor3 = Color3.fromRGB(180, 180, 190)
-    CloseButton.TextSize = 18
-    CloseButton.Font = Enum.Font.GothamBold
-    CloseButton.Parent = NotifFrame
+    -- Calculate Height
+    local contentHeight = ContentLabel.TextBounds.Y
+    local totalHeight = 45 + contentHeight
+    MainFrame.Size = UDim2.new(1, 0, 0, totalHeight)
     
+    -- Animation In
     Tween(NotifFrame, {Size = UDim2.new(1, 0, 0, totalHeight)}, 0.3, Enum.EasingStyle.Back)
     
-    local function closeNotif()
+    -- Progress Bar
+    Tween(ProgressBar, {Size = UDim2.new(0, 0, 0, 2)}, duration)
+    
+    task.delay(duration, function()
+        -- Animation Out
         Tween(NotifFrame, {Size = UDim2.new(1, 0, 0, 0)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In)
         task.wait(0.3)
         NotifFrame:Destroy()
-    end
-    
-    CloseButton.MouseButton1Click:Connect(closeNotif)
-    
-    task.delay(duration, closeNotif)
+    end)
 end
 
 -- Config System Functions
@@ -449,7 +513,7 @@ function FluxUI:Notify(config)
 end
 
 -- Theme List
-FluxUI.Themes = {"Dark", "Light", "Purple", "Ocean", "Sunset", "Rose", "Emerald", "Midnight"}
+FluxUI.Themes = {"Dark", "Light", "Purple", "Ocean", "Sunset", "Rose", "Emerald", "Midnight", "Modern"}
 
 -- Main Window Class
 function FluxUI:CreateWindow(config)
@@ -1147,6 +1211,7 @@ function FluxUI:CreateWindow(config)
             config = config or {}
             local buttonText = config.Name or "Button"
             local callback = config.Callback or function() end
+            local tooltipText = config.Tooltip
             
             local ButtonFrame = Instance.new("Frame")
             ButtonFrame.Size = UDim2.new(1, 0, 0, 40)
@@ -1155,6 +1220,7 @@ function FluxUI:CreateWindow(config)
             ButtonFrame.Parent = TabContent
             
             AddStroke(ButtonFrame, Colors.Border, 1)
+            AddTooltip(ButtonFrame, tooltipText)
             
             local ButtonCorner = Instance.new("UICorner")
             ButtonCorner.CornerRadius = UDim.new(0, 8)
@@ -1199,6 +1265,7 @@ function FluxUI:CreateWindow(config)
             local default = config.Default or false
             local callback = config.Callback or function() end
             local flag = config.Flag
+            local tooltipText = config.Tooltip
             
             local ToggleFrame = Instance.new("Frame")
             ToggleFrame.Size = UDim2.new(1, 0, 0, 35)
@@ -1211,6 +1278,7 @@ function FluxUI:CreateWindow(config)
             ToggleCorner.Parent = ToggleFrame
             
             AddStroke(ToggleFrame, Colors.Border, 1)
+            AddTooltip(ToggleFrame, tooltipText)
             
             local ToggleLabel = Instance.new("TextLabel")
             ToggleLabel.Size = UDim2.new(1, -50, 1, 0)
@@ -1489,15 +1557,21 @@ function FluxUI:CreateWindow(config)
         
         function Tab:CreateTextbox(config)
             config = config or {}
-            local textboxText = config.Name or "Textbox"
+            local name = config.Name or "Textbox"
             local placeholder = config.Placeholder or "Enter text..."
             local callback = config.Callback or function() end
+            local flag = config.Flag
+            local clearOnFocus = config.ClearOnFocus or false
+            local tooltipText = config.Tooltip
             
             local TextboxFrame = Instance.new("Frame")
-            TextboxFrame.Size = UDim2.new(1, 0, 0, 70)
+            TextboxFrame.Size = UDim2.new(1, 0, 0, 40)
             TextboxFrame.BackgroundColor3 = Colors.Tertiary
             TextboxFrame.BorderSizePixel = 0
             TextboxFrame.Parent = TabContent
+            
+            AddStroke(TextboxFrame, Colors.Border, 1)
+            AddTooltip(TextboxFrame, tooltipText)
             
             local TextboxCorner = Instance.new("UICorner")
             TextboxCorner.CornerRadius = UDim.new(0, 8)
@@ -1505,47 +1579,48 @@ function FluxUI:CreateWindow(config)
             
             local TextboxLabel = Instance.new("TextLabel")
             TextboxLabel.Size = UDim2.new(1, -20, 0, 20)
-            TextboxLabel.Position = UDim2.new(0, 10, 0, 5)
+            TextboxLabel.Position = UDim2.new(0, 10, 0, 2)
             TextboxLabel.BackgroundTransparency = 1
-            TextboxLabel.Text = textboxText
+            TextboxLabel.Text = name
             TextboxLabel.TextColor3 = Colors.Text
-            TextboxLabel.TextSize = 14
+            TextboxLabel.TextSize = 13
             TextboxLabel.Font = Enum.Font.Gotham
             TextboxLabel.TextXAlignment = Enum.TextXAlignment.Left
             TextboxLabel.Parent = TextboxFrame
             
             local Textbox = Instance.new("TextBox")
-            Textbox.Size = UDim2.new(1, -20, 0, 30)
-            Textbox.Position = UDim2.new(0, 10, 0, 30)
-            Textbox.BackgroundColor3 = Colors.Background
-            Textbox.BorderSizePixel = 0
+            Textbox.Size = UDim2.new(1, -20, 0, 16)
+            Textbox.Position = UDim2.new(0, 10, 0, 22)
+            Textbox.BackgroundTransparency = 1
+            Textbox.Text = ""
             Textbox.PlaceholderText = placeholder
             Textbox.PlaceholderColor3 = Colors.TextDim
-            Textbox.Text = ""
-            Textbox.TextColor3 = Colors.Text
+            Textbox.TextColor3 = Colors.TextDim
             Textbox.TextSize = 13
             Textbox.Font = Enum.Font.Gotham
-            Textbox.ClearTextOnFocus = false
+            Textbox.TextXAlignment = Enum.TextXAlignment.Left
+            Textbox.ClearTextOnFocus = clearOnFocus
             Textbox.Parent = TextboxFrame
             
-            local TextboxInnerCorner = Instance.new("UICorner")
-            TextboxInnerCorner.CornerRadius = UDim.new(0, 6)
-            TextboxInnerCorner.Parent = Textbox
+            Textbox.Focused:Connect(function()
+                Tween(TextboxFrame, {BackgroundColor3 = Colors.Secondary}, 0.2)
+                Tween(Textbox, {TextColor3 = Colors.Text}, 0.2)
+            end)
             
-            local TextboxPadding = Instance.new("UIPadding")
-            TextboxPadding.PaddingLeft = UDim.new(0, 10)
-            TextboxPadding.PaddingRight = UDim.new(0, 10)
-            TextboxPadding.Parent = Textbox
-            
-            Textbox.FocusLost:Connect(function(enterPressed)
-                if enterPressed then
-                    SafeCallback(callback, Textbox.Text)
+            Textbox.FocusLost:Connect(function()
+                Tween(TextboxFrame, {BackgroundColor3 = Colors.Tertiary}, 0.2)
+                Tween(Textbox, {TextColor3 = Colors.TextDim}, 0.2)
+                SafeCallback(callback, Textbox.Text)
+                
+                if flag and ConfigSystem.CurrentConfig then
+                    ConfigSystem.CurrentConfig[flag] = Textbox.Text
                 end
             end)
             
-            return {
+            local textboxObj = {
                 SetValue = function(text)
                     Textbox.Text = text
+                    SafeCallback(callback, text)
                 end,
                 GetValue = function()
                     return Textbox.Text
@@ -1555,8 +1630,26 @@ function FluxUI:CreateWindow(config)
                 end,
                 Instance = TextboxFrame
             }
-        end
-        
+            
+            -- Register flag
+            if flag and ConfigSystem and ConfigSystem.Flags then
+                ConfigSystem.Flags[flag] = {
+                    Type = "Textbox",
+                    Set = function(value)
+                        textboxObj.SetValue(value)
+                    end,
+                    Get = function()
+                        return Textbox.Text
+                    end
+                }
+                if ConfigSystem.CurrentConfig and ConfigSystem.CurrentConfig[flag] then
+                    textboxObj.SetValue(ConfigSystem.CurrentConfig[flag])
+                end
+            end
+            
+            return textboxObj
+        end 
+
         function Tab:CreateKeybind(config)
             config = config or {}
             local keybindText = config.Name or "Keybind"
@@ -1674,6 +1767,8 @@ function FluxUI:CreateWindow(config)
             local pickerText = config.Name or "Color Picker"
             local default = config.Default or Color3.fromRGB(255, 255, 255)
             local callback = config.Callback or function() end
+            local flag = config.Flag
+            local tooltipText = config.Tooltip
             
             local ColorFrame = Instance.new("Frame")
             ColorFrame.Size = UDim2.new(1, 0, 0, 40)
@@ -1682,12 +1777,15 @@ function FluxUI:CreateWindow(config)
             ColorFrame.ClipsDescendants = true
             ColorFrame.Parent = TabContent
             
+            AddStroke(ColorFrame, Colors.Border, 1)
+            AddTooltip(ColorFrame, tooltipText)
+            
             local ColorCorner = Instance.new("UICorner")
             ColorCorner.CornerRadius = UDim.new(0, 8)
             ColorCorner.Parent = ColorFrame
             
             local ColorLabel = Instance.new("TextLabel")
-            ColorLabel.Size = UDim2.new(1, -60, 1, 0)
+            ColorLabel.Size = UDim2.new(1, -60, 0, 40)
             ColorLabel.Position = UDim2.new(0, 15, 0, 0)
             ColorLabel.BackgroundTransparency = 1
             ColorLabel.Text = pickerText
@@ -1699,7 +1797,7 @@ function FluxUI:CreateWindow(config)
             
             local ColorPreview = Instance.new("TextButton")
             ColorPreview.Size = UDim2.new(0, 35, 0, 25)
-            ColorPreview.Position = UDim2.new(1, -50, 0.5, -12.5)
+            ColorPreview.Position = UDim2.new(1, -50, 0, 7.5)
             ColorPreview.BackgroundColor3 = default
             ColorPreview.BorderSizePixel = 0
             ColorPreview.Text = ""
@@ -1709,14 +1807,11 @@ function FluxUI:CreateWindow(config)
             PreviewCorner.CornerRadius = UDim.new(0, 6)
             PreviewCorner.Parent = ColorPreview
             
-            local PreviewStroke = Instance.new("UIStroke")
-            PreviewStroke.Color = Colors.Border
-            PreviewStroke.Thickness = 1
-            PreviewStroke.Parent = ColorPreview
+            AddStroke(ColorPreview, Colors.Border, 1)
             
-            -- Color Picker Panel
+            -- Picker Panel
             local PickerPanel = Instance.new("Frame")
-            PickerPanel.Size = UDim2.new(1, -20, 0, 120)
+            PickerPanel.Size = UDim2.new(1, -20, 0, 150)
             PickerPanel.Position = UDim2.new(0, 10, 0, 45)
             PickerPanel.BackgroundColor3 = Colors.Background
             PickerPanel.BorderSizePixel = 0
@@ -1727,104 +1822,162 @@ function FluxUI:CreateWindow(config)
             PanelCorner.CornerRadius = UDim.new(0, 6)
             PanelCorner.Parent = PickerPanel
             
-            -- RGB Sliders
-            local currentColor = {R = default.R * 255, G = default.G * 255, B = default.B * 255}
-            local isOpen = false
+            -- SV Square (Saturation/Value)
+            local SVSquare = Instance.new("ImageButton")
+            SVSquare.Size = UDim2.new(0, 100, 0, 100)
+            SVSquare.Position = UDim2.new(0, 10, 0, 10)
+            SVSquare.BackgroundColor3 = Color3.fromHSV(Color3.toHSV(default))
+            SVSquare.Image = "rbxassetid://4155801252" -- White overlay
+            SVSquare.Parent = PickerPanel
             
-            local function createColorSlider(name, yPos, defaultVal)
-                local SliderLabel = Instance.new("TextLabel")
-                SliderLabel.Size = UDim2.new(0, 20, 0, 25)
-                SliderLabel.Position = UDim2.new(0, 10, 0, yPos)
-                SliderLabel.BackgroundTransparency = 1
-                SliderLabel.Text = name
-                SliderLabel.TextColor3 = Colors.Text
-                SliderLabel.TextSize = 12
-                SliderLabel.Font = Enum.Font.GothamBold
-                SliderLabel.Parent = PickerPanel
+            local SVCorner = Instance.new("UICorner")
+            SVCorner.CornerRadius = UDim.new(0, 4)
+            SVCorner.Parent = SVSquare
+            
+            local SVCursor = Instance.new("Frame")
+            SVCursor.Size = UDim2.new(0, 8, 0, 8)
+            SVCursor.AnchorPoint = Vector2.new(0.5, 0.5)
+            SVCursor.BackgroundColor3 = Color3.new(1, 1, 1)
+            SVCursor.Parent = SVSquare
+            
+            local SVCursorCorner = Instance.new("UICorner")
+            SVCursorCorner.CornerRadius = UDim.new(1, 0)
+            SVCursorCorner.Parent = SVCursor
+             
+            AddStroke(SVCursor, Color3.new(0,0,0), 1)
+            
+            -- Hue Slider
+            local HueSlider = Instance.new("ImageButton")
+            HueSlider.Size = UDim2.new(0, 20, 0, 100)
+            HueSlider.Position = UDim2.new(0, 120, 0, 10)
+            HueSlider.Image = "rbxassetid://6971567554" -- Rainbow gradient
+            HueSlider.Parent = PickerPanel
+            
+            local HueCorner = Instance.new("UICorner")
+            HueCorner.CornerRadius = UDim.new(0, 4)
+            HueCorner.Parent = HueSlider
+            
+            local HueCursor = Instance.new("Frame")
+            HueCursor.Size = UDim2.new(1, 4, 0, 6)
+            HueCursor.Position = UDim2.new(0, -2, 0, 0)
+            HueCursor.BackgroundColor3 = Color3.new(1, 1, 1)
+            HueCursor.BorderSizePixel = 0
+            HueCursor.Parent = HueSlider
+            
+            local HueCursorCorner = Instance.new("UICorner")
+            HueCursorCorner.CornerRadius = UDim.new(0, 2)
+            HueCursorCorner.Parent = HueCursor
+            
+            AddStroke(HueCursor, Color3.new(0,0,0), 1)
+            
+            -- Hex Input
+            local HexInput = Instance.new("TextBox")
+            HexInput.Size = UDim2.new(0, 130, 0, 25)
+            HexInput.Position = UDim2.new(0, 10, 0, 115)
+            HexInput.BackgroundColor3 = Colors.Tertiary
+            HexInput.Text = "#" .. default:ToHex()
+            HexInput.TextColor3 = Colors.Text
+            HexInput.TextSize = 12
+            HexInput.Font = Enum.Font.Gotham
+            HexInput.PlaceholderText = "#FFFFFF"
+            HexInput.Parent = PickerPanel
+            
+            local HexCorner = Instance.new("UICorner")
+            HexCorner.CornerRadius = UDim.new(0, 4)
+            HexCorner.Parent = HexInput
+            
+            AddStroke(HexInput, Colors.Border, 1)
+            
+            -- Logic
+            local h, s, v = Color3.toHSV(default)
+            local isOpen = false
+            local draggingSV = false
+            local draggingHue = false
+            
+            local function UpdateColor(newH, newS, newV)
+                h = newH or h
+                s = newS or s
+                v = newV or v
                 
-                local SliderBar = Instance.new("Frame")
-                SliderBar.Size = UDim2.new(1, -80, 0, 6)
-                SliderBar.Position = UDim2.new(0, 35, 0, yPos + 10)
-                SliderBar.BackgroundColor3 = Colors.Border
-                SliderBar.Parent = PickerPanel
+                local color = Color3.fromHSV(h, s, v)
+                SVSquare.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+                ColorPreview.BackgroundColor3 = color
+                HexInput.Text = "#" .. color:ToHex()
+                SafeCallback(callback, color)
                 
-                local SliderBarCorner = Instance.new("UICorner")
-                SliderBarCorner.CornerRadius = UDim.new(1, 0)
-                SliderBarCorner.Parent = SliderBar
-                
-                local SliderFill = Instance.new("Frame")
-                SliderFill.Size = UDim2.new(defaultVal / 255, 0, 1, 0)
-                SliderFill.BackgroundColor3 = name == "R" and Color3.fromRGB(255, 100, 100) or (name == "G" and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(100, 100, 255))
-                SliderFill.Parent = SliderBar
-                
-                local FillCorner = Instance.new("UICorner")
-                FillCorner.CornerRadius = UDim.new(1, 0)
-                FillCorner.Parent = SliderFill
-                
-                local ValueLabel = Instance.new("TextLabel")
-                ValueLabel.Size = UDim2.new(0, 35, 0, 25)
-                ValueLabel.Position = UDim2.new(1, -40, 0, yPos)
-                ValueLabel.BackgroundTransparency = 1
-                ValueLabel.Text = tostring(math.floor(defaultVal))
-                ValueLabel.TextColor3 = Colors.TextDim
-                ValueLabel.TextSize = 12
-                ValueLabel.Font = Enum.Font.Gotham
-                ValueLabel.Parent = PickerPanel
-                
-                local SliderButton = Instance.new("TextButton")
-                SliderButton.Size = UDim2.new(1, 0, 1, 10)
-                SliderButton.Position = UDim2.new(0, 0, 0, -5)
-                SliderButton.BackgroundTransparency = 1
-                SliderButton.Text = ""
-                SliderButton.Parent = SliderBar
-                
-                local dragging = false
-                
-                SliderButton.MouseButton1Down:Connect(function()
-                    dragging = true
-                end)
-                
-                UserInputService.InputEnded:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                        dragging = false
-                    end
-                end)
-                
-                local function updateSlider(input)
-                    local percentage = math.clamp((input.Position.X - SliderBar.AbsolutePosition.X) / SliderBar.AbsoluteSize.X, 0, 1)
-                    local value = math.floor(percentage * 255)
-                    
-                    currentColor[name] = value
-                    SliderFill.Size = UDim2.new(percentage, 0, 1, 0)
-                    ValueLabel.Text = tostring(value)
-                    
-                    local newColor = Color3.fromRGB(currentColor.R, currentColor.G, currentColor.B)
-                    ColorPreview.BackgroundColor3 = newColor
-                    SafeCallback(callback, newColor)
+                if flag and ConfigSystem.CurrentConfig then
+                    ConfigSystem.CurrentConfig[flag] = color
                 end
-                
-                SliderButton.MouseButton1Click:Connect(function()
-                    local mouse = UserInputService:GetMouseLocation()
-                    updateSlider({Position = Vector2.new(mouse.X, mouse.Y)})
-                end)
-                
-                UserInputService.InputChanged:Connect(function(input)
-                    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-                        updateSlider(input)
-                    end
-                end)
             end
             
-            createColorSlider("R", 10, currentColor.R)
-            createColorSlider("G", 45, currentColor.G)
-            createColorSlider("B", 80, currentColor.B)
+            -- SV Logic
+            SVSquare.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    draggingSV = true
+                end
+            end)
+            
+            SVSquare.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    draggingSV = false
+                end
+            end)
+            
+            -- Hue Logic
+            HueSlider.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    draggingHue = true
+                end
+            end)
+            
+            HueSlider.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    draggingHue = false
+                end
+            end)
+            
+            UserInputService.InputChanged:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseMovement then
+                    if draggingSV then
+                        local mouse = UserInputService:GetMouseLocation()
+                        local relX = math.clamp(mouse.X - SVSquare.AbsolutePosition.X, 0, SVSquare.AbsoluteSize.X)
+                        local relY = math.clamp(mouse.Y - SVSquare.AbsolutePosition.Y, 0, SVSquare.AbsoluteSize.Y)
+                        
+                        local newS = relX / SVSquare.AbsoluteSize.X
+                        local newV = 1 - (relY / SVSquare.AbsoluteSize.Y)
+                        
+                        SVCursor.Position = UDim2.new(newS, 0, 1-newV, 0)
+                        UpdateColor(nil, newS, newV)
+                    elseif draggingHue then
+                        local mouse = UserInputService:GetMouseLocation()
+                        local relY = math.clamp(mouse.Y - HueSlider.AbsolutePosition.Y, 0, HueSlider.AbsoluteSize.Y)
+                        local newH = 1 - (relY / HueSlider.AbsoluteSize.Y)
+                        
+                        HueCursor.Position = UDim2.new(0, -2, 1-newH, 0) -- Adjusted for inverted hue
+                        UpdateColor(newH, nil, nil)
+                    end
+                end
+            end)
+            
+            -- Hex Logic
+            HexInput.FocusLost:Connect(function()
+                local success, color = pcall(function()
+                    return Color3.fromHex(HexInput.Text)
+                end)
+                if success then
+                    local newH, newS, newV = Color3.toHSV(color)
+                    UpdateColor(newH, newS, newV)
+                    -- Update cursors
+                    SVCursor.Position = UDim2.new(newS, 0, 1-newV, 0)
+                    HueCursor.Position = UDim2.new(0, -2, 1-newH, 0) 
+                end
+            end)
             
             ColorPreview.MouseButton1Click:Connect(function()
                 isOpen = not isOpen
-                
                 if isOpen then
                     PickerPanel.Visible = true
-                    Tween(ColorFrame, {Size = UDim2.new(1, 0, 0, 175)}, 0.3)
+                    Tween(ColorFrame, {Size = UDim2.new(1, 0, 0, 200)}, 0.3)
                 else
                     Tween(ColorFrame, {Size = UDim2.new(1, 0, 0, 40)}, 0.3)
                     task.wait(0.3)
@@ -1832,12 +1985,36 @@ function FluxUI:CreateWindow(config)
                 end
             end)
             
+            -- Init Cursors
+            SVCursor.Position = UDim2.new(s, 0, 1-v, 0)
+            HueCursor.Position = UDim2.new(0, -2, 1-h, 0) 
+            
+             -- Register flag
+            if flag and ConfigSystem and ConfigSystem.Flags then
+                ConfigSystem.Flags[flag] = {
+                    Type = "ColorPicker",
+                    Set = function(color)
+                         local newH, newS, newV = Color3.toHSV(color)
+                        UpdateColor(newH, newS, newV)
+                        SVCursor.Position = UDim2.new(newS, 0, 1-newV, 0)
+                        HueCursor.Position = UDim2.new(0, -2, 1-newH, 0)
+                    end,
+                    Get = function()
+                        return Color3.fromHSV(h, s, v)
+                    end
+                }
+            end
+            
             return {
                 SetValue = function(color)
-                    currentColor = {R = color.R * 255, G = color.G * 255, B = color.B * 255}
-                    ColorPreview.BackgroundColor3 = color
-                    SafeCallback(callback, color)
+                    if typeof(color) == "Color3" then
+                        local newH, newS, newV = Color3.toHSV(color)
+                        UpdateColor(newH, newS, newV)
+                        SVCursor.Position = UDim2.new(newS, 0, 1-newV, 0)
+                        HueCursor.Position = UDim2.new(0, -2, 1-newH, 0)
+                    end
                 end,
+                GetValue = function() return Color3.fromHSV(h,s,v) end,
                 SetVisible = function(visible)
                     ColorFrame.Visible = visible
                 end,
@@ -1859,6 +2036,7 @@ function FluxUI:CreateWindow(config)
             local searchEnabled = config.Search or false
             local maxVisible = config.MaxVisible or 6
             local placeholder = config.Placeholder or "Select option..."
+            local tooltipText = config.Tooltip
             
             -- State management
             local DropdownState = {
@@ -1868,11 +2046,13 @@ function FluxUI:CreateWindow(config)
                 SearchText = ""
             }
             
-            -- Initialize multi-select default
+            -- Initialize multi-select default (re-verify logic)
             if multiSelect and default and type(default) == "table" then
                 DropdownState.Selected = default
-            elseif multiSelect then
+            elseif multiSelect and not default then
                 DropdownState.Selected = {}
+            elseif not multiSelect and default then
+                -- Single select default handled in init
             end
             
             -- Container Frame (visible in tab)
@@ -1897,6 +2077,7 @@ function FluxUI:CreateWindow(config)
             ButtonCorner.Parent = DropdownButton
             
             AddStroke(DropdownButton, Colors.Border, 1)
+            AddTooltip(DropdownButton, tooltipText)
             
             -- Legacy Stroke Removal
             -- local ButtonStroke = Instance.new("UIStroke")
