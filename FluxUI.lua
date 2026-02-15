@@ -1,7 +1,8 @@
 local FluxUI = {}
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
-local CoreGui = game:GetService("CoreGui")
+local CoreGui = nil
+pcall(function() CoreGui = game:GetService("CoreGui") end)
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 
@@ -202,7 +203,12 @@ local function CreateScreenGui(name)
         syn.protect_gui(screenGui)
         screenGui.Parent = CoreGui
     else
-        screenGui.Parent = CoreGui
+        local success, err = pcall(function()
+            screenGui.Parent = CoreGui
+        end)
+        if not success then
+            screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+        end
     end
     
     return screenGui
