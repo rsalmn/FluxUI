@@ -10,10 +10,80 @@ end
 local FluxUI = {}
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 local CoreGui = nil
 pcall(function() CoreGui = game:GetService("CoreGui") end)
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
+
+-- ═══════════════════════════════════════════════
+-- Performance Infrastructure
+-- ═══════════════════════════════════════════════
+
+-- Connection Cleanup Table (#13)
+FluxUI._connections = {}    -- All global connections
+FluxUI._screenGuis = {}     -- All created ScreenGuis
+FluxUI._destroyed = false   -- Destroy flag
+
+local function TrackConnection(conn)
+    if conn then
+        table.insert(FluxUI._connections, conn)
+    end
+    return conn
+end
+
+-- Central Update Loop (#14)
+-- Components register functions here instead of creating individual RenderStepped connections
+local UpdateFunctions = {} -- { [id] = { fn = function, active = true, frames = 0, interval = 2 } }
+local updateIdCounter = 0
+
+local function RegisterUpdate(fn, interval)
+    updateIdCounter = updateIdCounter + 1
+    local id = updateIdCounter
+    UpdateFunctions[id] = { fn = fn, active = true, frames = 0, interval = interval or 2 }
+    return id
+end
+
+local function UnregisterUpdate(id)
+    if id and UpdateFunctions[id] then
+        UpdateFunctions[id] = nil
+    end
+end
+
+local function SetUpdateActive(id, active)
+    if id and UpdateFunctions[id] then
+        UpdateFunctions[id].active = active
+    end
+end
+
+-- Single heartbeat connection for ALL per-frame updates
+local _heartbeatConn = TrackConnection(RunService.Heartbeat:Connect(function()
+    if FluxUI._destroyed then return end
+    for id, entry in pairs(UpdateFunctions) do
+        if entry.active then
+            entry.frames = entry.frames + 1
+            if entry.frames >= entry.interval then
+                entry.frames = 0
+                local ok, err = pcall(entry.fn)
+                if not ok then
+                    -- Auto-remove broken update functions
+                    UpdateFunctions[id] = nil
+                end
+            end
+        end
+    end
+end))
+
+-- Batch Tween Utility (#18)
+local function BatchTween(tweens, duration, style, direction)
+    style = style or Enum.EasingStyle.Quad
+    direction = direction or Enum.EasingDirection.Out
+    local tweenInfo = TweenInfo.new(duration, style, direction)
+    for _, entry in ipairs(tweens) do
+        local tween = TweenService:Create(entry[1], tweenInfo, entry[2])
+        tween:Play()
+    end
+end
 
 -- Config System
 local ConfigFolder = "FluxUI_Configs"
@@ -94,11 +164,13 @@ local function AddStroke(object, color, thickness, transparency)
 end
 
 local Tooltip = nil
+local tooltipUpdateId = nil
 local function AddTooltip(object, text)
     if not text then return end
     
     object.MouseEnter:Connect(function()
         if Tooltip then Tooltip:Destroy() Tooltip = nil end
+        if tooltipUpdateId then UnregisterUpdate(tooltipUpdateId) tooltipUpdateId = nil end
         
         Tooltip = Instance.new("TextLabel")
         Tooltip.Name = "Tooltip"
@@ -122,22 +194,21 @@ local function AddTooltip(object, text)
         corner.CornerRadius = UDim.new(0, 4)
         corner.Parent = Tooltip
         
-        -- Follow mouse
-        local mouseConn
-        mouseConn = game:GetService("RunService").RenderStepped:Connect(function()
+        -- Follow mouse via central update loop
+        tooltipUpdateId = RegisterUpdate(function()
             if not object or not object.Parent or not Tooltip or not Tooltip.Parent then
-                if mouseConn then mouseConn:Disconnect() end
+                if tooltipUpdateId then UnregisterUpdate(tooltipUpdateId) tooltipUpdateId = nil end
                 return
             end
             local mouse = UserInputService:GetMouseLocation()
             Tooltip.Position = UDim2.fromOffset(mouse.X + 15, mouse.Y + 15)
-        end)
+        end, 1) -- every frame for smooth tracking
         
         -- Cleanup on leave
         local leaveConn
         leaveConn = object.MouseLeave:Connect(function()
             if Tooltip then Tooltip:Destroy() Tooltip = nil end
-            if mouseConn then mouseConn:Disconnect() end
+            if tooltipUpdateId then UnregisterUpdate(tooltipUpdateId) tooltipUpdateId = nil end
             if leaveConn then leaveConn:Disconnect() end
         end)
     end)
@@ -220,6 +291,7 @@ local function CreateScreenGui(name)
         end
     end
     
+    table.insert(FluxUI._screenGuis, screenGui)
     return screenGui
 end
 
@@ -266,15 +338,18 @@ local function CreateNotification(config)
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "Main"
     MainFrame.Size = UDim2.new(1, 0, 0, 0) -- Calculated later
-    MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    MainFrame.BackgroundColor3 = Colors.Secondary
     MainFrame.BorderSizePixel = 0
     MainFrame.Parent = NotifFrame
+    
+    RegisterThemedElement(MainFrame, "BackgroundColor3", "Secondary")
     
     local NotifCorner = Instance.new("UICorner")
     NotifCorner.CornerRadius = UDim.new(0, 8)
     NotifCorner.Parent = MainFrame
     
-    AddStroke(MainFrame, Color3.fromRGB(60, 60, 70), 1)
+    local Stroke = AddStroke(MainFrame, Colors.Border, 1)
+    RegisterThemedElement(Stroke, "Color", "Border")
     
     local AccentBar = Instance.new("Frame")
     AccentBar.Name = "Accent"
@@ -293,7 +368,8 @@ local function CreateNotification(config)
     TitleLabel.Position = UDim2.new(0, 15, 0, 8)
     TitleLabel.BackgroundTransparency = 1
     TitleLabel.Text = title
-    TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TitleLabel.TextColor3 = Colors.Text
+    RegisterThemedElement(TitleLabel, "TextColor3", "Text")
     TitleLabel.TextSize = 14
     TitleLabel.Font = Enum.Font.GothamBold
     TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -305,7 +381,8 @@ local function CreateNotification(config)
     ContentLabel.Position = UDim2.new(0, 15, 0, 30)
     ContentLabel.BackgroundTransparency = 1
     ContentLabel.Text = content
-    ContentLabel.TextColor3 = Color3.fromRGB(180, 180, 190)
+    ContentLabel.TextColor3 = Colors.TextDim
+    RegisterThemedElement(ContentLabel, "TextColor3", "TextDim")
     ContentLabel.TextSize = 13
     ContentLabel.Font = Enum.Font.Gotham
     ContentLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -527,8 +604,153 @@ function FluxUI:Notify(config)
     CreateNotification(config)
 end
 
--- Theme List
-FluxUI.Themes = {"Dark", "Light", "Purple", "Ocean", "Sunset", "Rose", "Emerald", "Midnight", "Modern"}
+-- ═══════════════════════════════════════════════
+-- Theme System (Module Level)
+-- ═══════════════════════════════════════════════
+local Themes = {
+    Modern = {
+        Background = Color3.fromRGB(15, 15, 20),
+        Secondary = Color3.fromRGB(25, 25, 30),
+        Tertiary = Color3.fromRGB(35, 35, 40),
+        Accent = Color3.fromRGB(0, 122, 255),
+        AccentHover = Color3.fromRGB(10, 132, 255),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(150, 150, 160),
+        Border = Color3.fromRGB(50, 50, 60),
+        AccentGradient = {Color3.fromRGB(0, 122, 255), Color3.fromRGB(0, 200, 255)}
+    },
+    Dark = {
+        Background = Color3.fromRGB(20, 20, 25),
+        Secondary = Color3.fromRGB(30, 30, 35),
+        Tertiary = Color3.fromRGB(40, 40, 45),
+        Accent = Color3.fromRGB(88, 101, 242),
+        AccentHover = Color3.fromRGB(108, 121, 255),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(180, 180, 190),
+        Border = Color3.fromRGB(60, 60, 70),
+        AccentGradient = {Color3.fromRGB(88, 101, 242), Color3.fromRGB(140, 100, 255)}
+    },
+    Light = {
+        Background = Color3.fromRGB(245, 245, 250),
+        Secondary = Color3.fromRGB(255, 255, 255),
+        Tertiary = Color3.fromRGB(235, 235, 240),
+        Accent = Color3.fromRGB(88, 101, 242),
+        AccentHover = Color3.fromRGB(108, 121, 255),
+        Text = Color3.fromRGB(20, 20, 25),
+        TextDim = Color3.fromRGB(100, 100, 110),
+        Border = Color3.fromRGB(220, 220, 230),
+        AccentGradient = {Color3.fromRGB(88, 101, 242), Color3.fromRGB(120, 130, 255)}
+    },
+    Purple = {
+        Background = Color3.fromRGB(25, 20, 35),
+        Secondary = Color3.fromRGB(35, 28, 50),
+        Tertiary = Color3.fromRGB(50, 40, 70),
+        Accent = Color3.fromRGB(138, 43, 226),
+        AccentHover = Color3.fromRGB(160, 80, 255),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(190, 170, 210),
+        Border = Color3.fromRGB(80, 60, 100),
+        AccentGradient = {Color3.fromRGB(138, 43, 226), Color3.fromRGB(200, 80, 255)}
+    },
+    Ocean = {
+        Background = Color3.fromRGB(15, 25, 35),
+        Secondary = Color3.fromRGB(20, 35, 50),
+        Tertiary = Color3.fromRGB(30, 50, 70),
+        Accent = Color3.fromRGB(0, 150, 200),
+        AccentHover = Color3.fromRGB(50, 180, 230),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(150, 190, 210),
+        Border = Color3.fromRGB(50, 80, 110),
+        AccentGradient = {Color3.fromRGB(0, 150, 200), Color3.fromRGB(0, 220, 180)}
+    },
+    Sunset = {
+        Background = Color3.fromRGB(30, 20, 20),
+        Secondary = Color3.fromRGB(45, 30, 30),
+        Tertiary = Color3.fromRGB(60, 40, 40),
+        Accent = Color3.fromRGB(255, 100, 50),
+        AccentHover = Color3.fromRGB(255, 130, 80),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(220, 180, 170),
+        Border = Color3.fromRGB(100, 60, 50),
+        AccentGradient = {Color3.fromRGB(255, 80, 50), Color3.fromRGB(255, 180, 40)}
+    },
+    Rose = {
+        Background = Color3.fromRGB(30, 20, 25),
+        Secondary = Color3.fromRGB(45, 30, 38),
+        Tertiary = Color3.fromRGB(60, 40, 50),
+        Accent = Color3.fromRGB(255, 80, 120),
+        AccentHover = Color3.fromRGB(255, 120, 150),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(220, 180, 195),
+        Border = Color3.fromRGB(100, 60, 75),
+        AccentGradient = {Color3.fromRGB(255, 80, 120), Color3.fromRGB(255, 150, 180)}
+    },
+    Emerald = {
+        Background = Color3.fromRGB(18, 28, 22),
+        Secondary = Color3.fromRGB(25, 40, 32),
+        Tertiary = Color3.fromRGB(35, 55, 45),
+        Accent = Color3.fromRGB(50, 205, 100),
+        AccentHover = Color3.fromRGB(80, 230, 130),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(170, 210, 185),
+        Border = Color3.fromRGB(55, 85, 65),
+        AccentGradient = {Color3.fromRGB(50, 205, 100), Color3.fromRGB(0, 255, 150)}
+    },
+    Midnight = {
+        Background = Color3.fromRGB(10, 10, 20),
+        Secondary = Color3.fromRGB(18, 18, 35),
+        Tertiary = Color3.fromRGB(28, 28, 50),
+        Accent = Color3.fromRGB(100, 100, 255),
+        AccentHover = Color3.fromRGB(130, 130, 255),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(150, 150, 200),
+        Border = Color3.fromRGB(50, 50, 80),
+        AccentGradient = {Color3.fromRGB(80, 80, 255), Color3.fromRGB(150, 100, 255)}
+    }
+}
+
+-- Build theme name list
+FluxUI.Themes = {}
+for name in pairs(Themes) do
+    table.insert(FluxUI.Themes, name)
+end
+table.sort(FluxUI.Themes)
+
+-- Custom Theme Builder (#3)
+function FluxUI:AddTheme(name, colorTable)
+    local required = {"Background", "Secondary", "Tertiary", "Accent", "AccentHover", "Text", "TextDim", "Border"}
+    for _, key in ipairs(required) do
+        if not colorTable[key] then
+            warn("FluxUI:AddTheme - Missing required key: " .. key)
+            return false
+        end
+    end
+    Themes[name] = colorTable
+    table.insert(FluxUI.Themes, name)
+    return true
+end
+
+-- Apply Accent Gradient Utility (#1)
+local function ApplyAccentGradient(object, colors)
+    if not colors or not colors.AccentGradient then return nil end
+    local gradient = Instance.new("UIGradient")
+    gradient.Color = ColorSequence.new(colors.AccentGradient[1], colors.AccentGradient[2])
+    gradient.Rotation = 45
+    gradient.Parent = object
+    return gradient
+end
+
+-- Themed Element Registry (for animated switching #2)
+-- Stores { object, property, themeKey } entries so SetTheme can tween them all
+local ThemedElements = {}
+
+local function RegisterThemedElement(object, property, themeKey)
+    if type(object) == "function" then
+        table.insert(ThemedElements, {fn = object})
+    else
+        table.insert(ThemedElements, {object = object, property = property, themeKey = themeKey})
+    end
+end
 
 -- Main Window Class
 function FluxUI:CreateWindow(config)
@@ -536,6 +758,7 @@ function FluxUI:CreateWindow(config)
     local windowName = config.Name or "FluxUI Window"
     local windowSize = config.Size or UDim2.new(0, 550, 0, 400)
     local theme = config.Theme or "Dark"
+    local enableGlass = config.Glass or false
     
     -- Initialize Config System
     InitializeConfigSystem()
@@ -544,100 +767,6 @@ function FluxUI:CreateWindow(config)
         Tabs = {},
         CurrentTab = nil,
         Theme = theme
-    }
-    
-    -- Theme Colors
-    local Themes = {
-        Modern = {
-            Background = Color3.fromRGB(15, 15, 20),
-            Secondary = Color3.fromRGB(25, 25, 30),
-            Tertiary = Color3.fromRGB(35, 35, 40),
-            Accent = Color3.fromRGB(0, 122, 255),
-            AccentHover = Color3.fromRGB(10, 132, 255),
-            Text = Color3.fromRGB(255, 255, 255),
-            TextDim = Color3.fromRGB(150, 150, 160),
-            Border = Color3.fromRGB(50, 50, 60)
-        },
-        Dark = {
-            Background = Color3.fromRGB(20, 20, 25),
-            Secondary = Color3.fromRGB(30, 30, 35),
-            Tertiary = Color3.fromRGB(40, 40, 45),
-            Accent = Color3.fromRGB(88, 101, 242),
-            AccentHover = Color3.fromRGB(108, 121, 255),
-            Text = Color3.fromRGB(255, 255, 255),
-            TextDim = Color3.fromRGB(180, 180, 190),
-            Border = Color3.fromRGB(60, 60, 70)
-        },
-        Light = {
-            Background = Color3.fromRGB(245, 245, 250),
-            Secondary = Color3.fromRGB(255, 255, 255),
-            Tertiary = Color3.fromRGB(235, 235, 240),
-            Accent = Color3.fromRGB(88, 101, 242),
-            AccentHover = Color3.fromRGB(108, 121, 255),
-            Text = Color3.fromRGB(20, 20, 25),
-            TextDim = Color3.fromRGB(100, 100, 110),
-            Border = Color3.fromRGB(220, 220, 230)
-        },
-        Purple = {
-            Background = Color3.fromRGB(25, 20, 35),
-            Secondary = Color3.fromRGB(35, 28, 50),
-            Tertiary = Color3.fromRGB(50, 40, 70),
-            Accent = Color3.fromRGB(138, 43, 226),
-            AccentHover = Color3.fromRGB(160, 80, 255),
-            Text = Color3.fromRGB(255, 255, 255),
-            TextDim = Color3.fromRGB(190, 170, 210),
-            Border = Color3.fromRGB(80, 60, 100)
-        },
-        Ocean = {
-            Background = Color3.fromRGB(15, 25, 35),
-            Secondary = Color3.fromRGB(20, 35, 50),
-            Tertiary = Color3.fromRGB(30, 50, 70),
-            Accent = Color3.fromRGB(0, 150, 200),
-            AccentHover = Color3.fromRGB(50, 180, 230),
-            Text = Color3.fromRGB(255, 255, 255),
-            TextDim = Color3.fromRGB(150, 190, 210),
-            Border = Color3.fromRGB(50, 80, 110)
-        },
-        Sunset = {
-            Background = Color3.fromRGB(30, 20, 20),
-            Secondary = Color3.fromRGB(45, 30, 30),
-            Tertiary = Color3.fromRGB(60, 40, 40),
-            Accent = Color3.fromRGB(255, 100, 50),
-            AccentHover = Color3.fromRGB(255, 130, 80),
-            Text = Color3.fromRGB(255, 255, 255),
-            TextDim = Color3.fromRGB(220, 180, 170),
-            Border = Color3.fromRGB(100, 60, 50)
-        },
-        Rose = {
-            Background = Color3.fromRGB(30, 20, 25),
-            Secondary = Color3.fromRGB(45, 30, 38),
-            Tertiary = Color3.fromRGB(60, 40, 50),
-            Accent = Color3.fromRGB(255, 80, 120),
-            AccentHover = Color3.fromRGB(255, 120, 150),
-            Text = Color3.fromRGB(255, 255, 255),
-            TextDim = Color3.fromRGB(220, 180, 195),
-            Border = Color3.fromRGB(100, 60, 75)
-        },
-        Emerald = {
-            Background = Color3.fromRGB(18, 28, 22),
-            Secondary = Color3.fromRGB(25, 40, 32),
-            Tertiary = Color3.fromRGB(35, 55, 45),
-            Accent = Color3.fromRGB(50, 205, 100),
-            AccentHover = Color3.fromRGB(80, 230, 130),
-            Text = Color3.fromRGB(255, 255, 255),
-            TextDim = Color3.fromRGB(170, 210, 185),
-            Border = Color3.fromRGB(55, 85, 65)
-        },
-        Midnight = {
-            Background = Color3.fromRGB(10, 10, 20),
-            Secondary = Color3.fromRGB(18, 18, 35),
-            Tertiary = Color3.fromRGB(28, 28, 50),
-            Accent = Color3.fromRGB(100, 100, 255),
-            AccentHover = Color3.fromRGB(130, 130, 255),
-            Text = Color3.fromRGB(255, 255, 255),
-            TextDim = Color3.fromRGB(150, 150, 200),
-            Border = Color3.fromRGB(50, 50, 80)
-        }
     }
     
     local Colors = Themes[theme]
@@ -654,6 +783,25 @@ function FluxUI:CreateWindow(config)
     MainFrame.BorderSizePixel = 0
     MainFrame.ClipsDescendants = true
     MainFrame.Parent = ScreenGui
+    
+    -- Glass / Blur Effect (#4)
+    if enableGlass then
+        MainFrame.BackgroundTransparency = 0.15
+        local blur = Instance.new("ImageLabel")
+        blur.Name = "GlassBlur"
+        blur.Size = UDim2.new(1, 0, 1, 0)
+        blur.BackgroundTransparency = 1
+        blur.Image = "rbxassetid://5554236805"
+        blur.ImageColor3 = Colors.Background
+        blur.ImageTransparency = 0.7
+        blur.ScaleType = Enum.ScaleType.Slice
+        blur.SliceCenter = Rect.new(23, 23, 277, 277)
+        blur.ZIndex = 0
+        blur.Parent = MainFrame
+    end
+    
+    -- Register themed elements for animated switching
+    RegisterThemedElement(MainFrame, "BackgroundColor3", "Background")
     
     AddStroke(MainFrame, Colors.Border, 1)
     
@@ -689,6 +837,8 @@ function FluxUI:CreateWindow(config)
     TopBarDivider.BorderSizePixel = 0
     TopBarDivider.Parent = TopBar
     
+    RegisterThemedElement(TopBarDivider, "BackgroundColor3", "Border")
+    
     local TopBarCorner = Instance.new("UICorner")
     TopBarCorner.CornerRadius = UDim.new(0, 12)
     TopBarCorner.Parent = TopBar
@@ -699,6 +849,8 @@ function FluxUI:CreateWindow(config)
     TopBarFix.BackgroundColor3 = Colors.Secondary
     TopBarFix.BorderSizePixel = 0
     TopBarFix.Parent = TopBar
+    
+    RegisterThemedElement(TopBarFix, "BackgroundColor3", "Secondary")
     
     -- Title
     local Title = Instance.new("TextLabel")
@@ -713,6 +865,8 @@ function FluxUI:CreateWindow(config)
     Title.TextXAlignment = Enum.TextXAlignment.Left
     Title.Parent = TopBar
     
+    RegisterThemedElement(Title, "TextColor3", "Text")
+    
     -- Minimize Button
     local MinimizeButton = Instance.new("TextButton")
     MinimizeButton.Name = "MinimizeButton"
@@ -725,6 +879,9 @@ function FluxUI:CreateWindow(config)
     MinimizeButton.TextSize = 20
     MinimizeButton.Font = Enum.Font.GothamBold
     MinimizeButton.Parent = TopBar
+    
+    RegisterThemedElement(MinimizeButton, "BackgroundColor3", "Tertiary")
+    RegisterThemedElement(MinimizeButton, "TextColor3", "Text")
     
     local MinimizeCorner = Instance.new("UICorner")
     MinimizeCorner.CornerRadius = UDim.new(0, 8)
@@ -740,6 +897,9 @@ function FluxUI:CreateWindow(config)
     BubbleFrame.Visible = false
     BubbleFrame.ZIndex = 1000
     BubbleFrame.Parent = ScreenGui
+    
+    RegisterThemedElement(BubbleFrame, "BackgroundColor3", "Accent")
+    ApplyAccentGradient(BubbleFrame, Colors)
     
     local BubbleCorner = Instance.new("UICorner")
     BubbleCorner.CornerRadius = UDim.new(1, 0)
@@ -1022,6 +1182,13 @@ function FluxUI:CreateWindow(config)
         ConfirmCorner.CornerRadius = UDim.new(0, 8)
         ConfirmCorner.Parent = ConfirmBtn
         
+        -- Register Themed Elements (Dialog)
+        RegisterThemedElement(DialogFrame, "BackgroundColor3", "Background")
+        RegisterThemedElement(DialogTitle, "TextColor3", "Text")
+        RegisterThemedElement(DialogContent, "TextColor3", "TextDim")
+        RegisterThemedElement(CancelBtn, "BackgroundColor3", "Tertiary")
+        RegisterThemedElement(CancelBtn, "TextColor3", "Text")
+
         -- Animate in
         Tween(DialogFrame, {Size = UDim2.new(0, 300, 0, 220)}, 0.3, Enum.EasingStyle.Back)
         
@@ -1127,6 +1294,50 @@ function FluxUI:CreateWindow(config)
     Tween(MainFrame, {Size = windowSize}, 0.4, Enum.EasingStyle.Back)
     
     -- Tab Functions
+    -- Set Theme Method (#2)
+    function Window:SetTheme(themeName)
+        if not Themes[themeName] then
+            warn("FluxUI: Theme '" .. tostring(themeName) .. "' does not exist.")
+            return
+        end
+        
+        Window.Theme = themeName
+        local newColors = Themes[themeName]
+        Colors = newColors -- Update local Colors reference for new elements
+        
+        -- Batch tween all registered elements
+        local tweens = {}
+        local activeElements = {} -- Optimization: Remove destroyed elements
+        
+        for _, entry in ipairs(ThemedElements) do
+            local keep = false
+            
+            if entry.fn then
+                keep = true -- Callbacks are kept (usually associated with permanent UI or managed manually)
+                -- Safe callback execution
+                task.spawn(function() 
+                    local success, err = pcall(entry.fn, newColors)
+                    if not success then warn("Theme callback error:", err) end
+                end)
+            elseif entry.object then
+                if entry.object.Parent then
+                    keep = true
+                    local color = newColors[entry.themeKey]
+                    if color then
+                        table.insert(tweens, {entry.object, {[entry.property] = color}})
+                    end
+                end
+            end
+            
+            if keep then
+                table.insert(activeElements, entry)
+            end
+        end
+        
+        ThemedElements = activeElements
+        BatchTween(tweens, 0.4)
+    end
+
     function Window:CreateTab(tabName, icon)
         local Tab = {
             Name = tabName,
@@ -1158,6 +1369,17 @@ function FluxUI:CreateWindow(config)
         TabLabel.TextXAlignment = Enum.TextXAlignment.Left
         TabLabel.Parent = TabButton
         
+        -- Register Themed Elements (Tab)
+        RegisterThemedElement(function(colors)
+            if Window.CurrentTab == Tab then
+                Tween(TabButton, {BackgroundColor3 = colors.Accent}, 0.2)
+                Tween(TabLabel, {TextColor3 = colors.Text}, 0.2)
+            else
+                Tween(TabButton, {BackgroundColor3 = colors.Tertiary}, 0.2)
+                Tween(TabLabel, {TextColor3 = colors.TextDim}, 0.2)
+            end
+        end)
+        
         -- Tab Content
         local TabContent = Instance.new("ScrollingFrame")
         TabContent.Name = tabName .. "_Content"
@@ -1170,6 +1392,7 @@ function FluxUI:CreateWindow(config)
         TabContent.CanvasSize = UDim2.new(0, 0, 0, 0)
         TabContent.Visible = false
         TabContent.Parent = ContentContainer
+        RegisterThemedElement(TabContent, "ScrollBarImageColor3", "Accent")
         
         local ContentList = Instance.new("UIListLayout")
         ContentList.SortOrder = Enum.SortOrder.LayoutOrder
@@ -1250,6 +1473,9 @@ function FluxUI:CreateWindow(config)
             Button.Font = Enum.Font.Gotham
             Button.Parent = ButtonFrame
             
+            RegisterThemedElement(ButtonFrame, "BackgroundColor3", "Tertiary")
+            RegisterThemedElement(Button, "TextColor3", "Text")
+            
             Button.MouseButton1Click:Connect(function()
                 MakeRipple(ButtonFrame)
                 Tween(ButtonFrame, {BackgroundColor3 = Colors.Accent}, 0.1)
@@ -1314,6 +1540,14 @@ function FluxUI:CreateWindow(config)
             ToggleButton.Text = ""
             ToggleButton.AutoButtonColor = false
             ToggleButton.Parent = ToggleFrame
+            
+            RegisterThemedElement(ToggleFrame, "BackgroundColor3", "Background")
+            RegisterThemedElement(ToggleLabel, "TextColor3", "Text")
+            RegisterThemedElement(function(colors)
+                 local on = toggleObj and toggleObj.GetValue() or toggled
+                 Tween(ToggleButton, {BackgroundColor3 = on and colors.Accent or colors.Border}, 0.2)
+                 Tween(ToggleCircle, {BackgroundColor3 = colors.Text}, 0.2)
+            end)
             
             local ToggleButtonCorner = Instance.new("UICorner")
             ToggleButtonCorner.CornerRadius = UDim.new(1, 0)
@@ -1437,6 +1671,14 @@ function FluxUI:CreateWindow(config)
             SliderFill.BackgroundColor3 = Colors.Accent
             SliderFill.BorderSizePixel = 0
             SliderFill.Parent = SliderBar
+            
+            RegisterThemedElement(SliderFrame, "BackgroundColor3", "Tertiary")
+            RegisterThemedElement(SliderLabel, "TextColor3", "Text")
+            RegisterThemedElement(SliderValue, "TextColor3", "Accent")
+            RegisterThemedElement(SliderBar, "BackgroundColor3", "Border")
+            RegisterThemedElement(SliderFill, "BackgroundColor3", "Accent")
+            RegisterThemedElement(Tooltip, "BackgroundColor3", "Accent")
+            RegisterThemedElement(TooltipText, "TextColor3", "Text")
             
             local SliderFillCorner = Instance.new("UICorner")
             SliderFillCorner.CornerRadius = UDim.new(1, 0)
@@ -1617,6 +1859,17 @@ function FluxUI:CreateWindow(config)
             Textbox.ClearTextOnFocus = clearOnFocus
             Textbox.Parent = TextboxFrame
             
+            RegisterThemedElement(function(colors)
+                 if Textbox:IsFocused() then
+                     Tween(TextboxFrame, {BackgroundColor3 = colors.Secondary}, 0.2)
+                     Tween(Textbox, {TextColor3 = colors.Text}, 0.2)
+                 else
+                     Tween(TextboxFrame, {BackgroundColor3 = colors.Tertiary}, 0.2)
+                     Tween(Textbox, {TextColor3 = colors.TextDim}, 0.2)
+                 end
+            end)
+            RegisterThemedElement(TextboxLabel, "TextColor3", "Text")
+            
             Textbox.Focused:Connect(function()
                 Tween(TextboxFrame, {BackgroundColor3 = Colors.Secondary}, 0.2)
                 Tween(Textbox, {TextColor3 = Colors.Text}, 0.2)
@@ -1703,6 +1956,18 @@ function FluxUI:CreateWindow(config)
             KeybindButton.TextSize = 13
             KeybindButton.Font = Enum.Font.Gotham
             KeybindButton.Parent = KeybindFrame
+            
+            RegisterThemedElement(KeybindFrame, "BackgroundColor3", "Tertiary")
+            RegisterThemedElement(KeybindLabel, "TextColor3", "Text")
+            RegisterThemedElement(function(colors)
+                 if not listening then
+                     Tween(KeybindButton, {TextColor3 = colors.Text}, 0.2)
+                     Tween(KeybindButton, {BackgroundColor3 = colors.Background}, 0.2)
+                 else
+                     Tween(KeybindButton, {TextColor3 = colors.Text}, 0.2)
+                     Tween(KeybindButton, {BackgroundColor3 = colors.Accent}, 0.2)
+                 end
+            end)
             
             local KeybindButtonCorner = Instance.new("UICorner")
             KeybindButtonCorner.CornerRadius = UDim.new(0, 6)
@@ -1817,6 +2082,20 @@ function FluxUI:CreateWindow(config)
             ColorPreview.BorderSizePixel = 0
             ColorPreview.Text = ""
             ColorPreview.Parent = ColorFrame
+            
+            RegisterThemedElement(ColorFrame, "BackgroundColor3", "Tertiary")
+            RegisterThemedElement(ColorLabel, "TextColor3", "Text")
+            RegisterThemedElement(function(colors)
+                 local cpStroke = ColorPreview:FindFirstChild("UIStroke")
+                 if cpStroke then cpStroke.Color = colors.Border end
+                 
+                 Tween(HexInput, {BackgroundColor3 = colors.Tertiary}, 0.2)
+                 Tween(HexInput, {TextColor3 = colors.Text}, 0.2)
+                 local hStroke = HexInput:FindFirstChild("UIStroke")
+                 if hStroke then hStroke.Color = colors.Border end
+                 
+                 Tween(PickerPanel, {BackgroundColor3 = colors.Background}, 0.2)
+            end)
             
             local PreviewCorner = Instance.new("UICorner")
             PreviewCorner.CornerRadius = UDim.new(0, 6)
@@ -2642,6 +2921,28 @@ function FluxUI:CreateWindow(config)
             RefreshOptions()
             UpdateSelectedDisplay()
             
+            -- Register Themed Elements (Dropdown)
+            RegisterThemedElement(DropdownButton, "BackgroundColor3", "Tertiary")
+            RegisterThemedElement(DropdownLabel, "TextColor3", "Text")
+            RegisterThemedElement(function(colors)
+                 local btnStroke = DropdownButton:FindFirstChild("UIStroke")
+                 if btnStroke then btnStroke.Color = colors.Border end
+                 
+                 Tween(Panel, {BackgroundColor3 = colors.Tertiary}, 0.2)
+                 if PanelStroke then PanelStroke.Color = colors.Border end
+                 
+                 UpdateSelectedDisplay()
+                 RefreshOptions()
+                 
+                 Tween(Arrow, {TextColor3 = DropdownState.IsOpen and colors.Accent or colors.TextDim}, 0.2)
+                 
+                 if SearchBox then
+                      Tween(SearchBox, {BackgroundColor3 = colors.Background}, 0.2)
+                      Tween(SearchBox, {TextColor3 = colors.Text}, 0.2)
+                      SearchBox.PlaceholderColor3 = colors.TextDim
+                 end
+            end)
+            
             local dropdownObj 
             dropdownObj = {
                 SetValue = function(self, value, silent)
@@ -2734,13 +3035,7 @@ function FluxUI:CreateWindow(config)
                         end
                     end
                 end,
-                Refresh = function(newOptions, silent)
-                    if silent then
-                        dropdownObj.SetOptions({_silent=true, options=newOptions})
-                    else
-                        dropdownObj.SetOptions(newOptions)
-                    end
-                end,
+
                 Open = function()
                     OpenDropdown()
                 end,
@@ -2851,6 +3146,10 @@ function FluxUI:CreateWindow(config)
             ParagraphContent.TextWrapped = true
             ParagraphContent.Parent = ParagraphFrame
             
+            RegisterThemedElement(ParagraphFrame, "BackgroundColor3", "Tertiary")
+            RegisterThemedElement(ParagraphTitle, "TextColor3", "Text")
+            RegisterThemedElement(ParagraphContent, "TextColor3", "TextDim")
+            
             ParagraphContent.Size = UDim2.new(1, -20, 0, ParagraphContent.TextBounds.Y)
             ParagraphFrame.Size = UDim2.new(1, 0, 0, 48 + ParagraphContent.TextBounds.Y)
             
@@ -2896,6 +3195,8 @@ function FluxUI:CreateWindow(config)
                 Line1.BackgroundColor3 = Colors.Border
                 Line1.BorderSizePixel = 0
                 Line1.Parent = DividerFrame
+                RegisterThemedElement(DividerLabel, "TextColor3", "TextDim")
+                RegisterThemedElement(Line1, "BackgroundColor3", "Border")
                 
                 task.wait()
                 Line1.Size = UDim2.new(1, -(DividerLabel.TextBounds.X + 15), 0, 1)
@@ -2906,6 +3207,7 @@ function FluxUI:CreateWindow(config)
                 Line.BackgroundColor3 = Colors.Border
                 Line.BorderSizePixel = 0
                 Line.Parent = DividerFrame
+                RegisterThemedElement(Line, "BackgroundColor3", "Border")
             end
             
             return {
@@ -2981,6 +3283,11 @@ function FluxUI:CreateWindow(config)
             ChartArea.BackgroundColor3 = Colors.Background
             ChartArea.BorderSizePixel = 0
             ChartArea.Parent = ChartFrame
+            
+            RegisterThemedElement(ChartFrame, "BackgroundColor3", "Tertiary")
+            RegisterThemedElement(ChartTitle, "TextColor3", "Text")
+            RegisterThemedElement(ChartArea, "BackgroundColor3", "Background")
+            RegisterThemedElement(function() updateChart(data) end)
             
             local ChartAreaCorner = Instance.new("UICorner")
             ChartAreaCorner.CornerRadius = UDim.new(0, 6)
@@ -3158,6 +3465,9 @@ function FluxUI:CreateWindow(config)
             SectionLine.BorderSizePixel = 0
             SectionLine.Parent = SectionFrame
             
+            RegisterThemedElement(SectionLabel, "TextColor3", "Text")
+            RegisterThemedElement(SectionLine, "BackgroundColor3", "Accent")
+            
             local SectionLineCorner = Instance.new("UICorner")
             SectionLineCorner.CornerRadius = UDim.new(1, 0)
             SectionLineCorner.Parent = SectionLine
@@ -3216,6 +3526,10 @@ function FluxUI:CreateWindow(config)
             Arrow.Font = Enum.Font.Gotham
             Arrow.Rotation = defaultOpen and 0 or -90
             Arrow.Parent = CollapsibleFrame
+            
+            RegisterThemedElement(CollapsibleFrame, "BackgroundColor3", "Tertiary")
+            RegisterThemedElement(HeaderLabel, "TextColor3", "Text")
+            RegisterThemedElement(Arrow, "TextColor3", "TextDim")
             
             local ContentFrame = Instance.new("Frame")
             ContentFrame.Size = UDim2.new(1, -20, 0, 0)
@@ -3998,14 +4312,11 @@ function FluxUI:CreateWindow(config)
                 end)
                 table.insert(Connections, escConn)
                 
-                local renderConn = game:GetService("RunService").RenderStepped:Connect(function()
-                    if DropdownState.IsOpen and Panel.Visible then UpdatePanelPosition() end
-                end)
-                table.insert(Connections, renderConn)
-                
-                -- Monitor collapsible state
-                local collapsibleMonitor = game:GetService("RunService").RenderStepped:Connect(function()
-                    if DropdownState.IsOpen then
+                -- Combined panel position + visibility monitor via central update loop
+                local dropdownUpdateId = RegisterUpdate(function()
+                    if DropdownState.IsOpen and Panel.Visible then
+                        UpdatePanelPosition()
+                        -- Monitor collapsible state
                         local isVisible = Container.Visible and DropdownButton.Visible
                         local checkParent = Container.Parent
                         while checkParent and checkParent ~= ScreenGui do
@@ -4022,8 +4333,7 @@ function FluxUI:CreateWindow(config)
                         end
                         if not isVisible then CloseDropdown() end
                     end
-                end)
-                table.insert(Connections, collapsibleMonitor)
+                end, 2) -- every 2 frames
                 
                 DropdownState.FilteredOptions = options
                 RefreshOptions()
@@ -5156,122 +5466,45 @@ function FluxUI:CreateWindow(config)
         return GetConfigList()
     end
     
-    function Window:AutoLoadConfig(configName)
-        task.wait(0.5)
-        if isfile(ConfigFolder .. "/" .. configName .. ".json") then
-            LoadConfig(configName, ConfigSystem.Flags)
-        end
-    end
-    
-    -- Create Config Tab
-    function Window:AddConfigTab()
-        local ConfigTab = self:CreateTab("⚙️ Config")
-        
-        ConfigTab:CreateSection("Configuration Manager")
-        
-        ConfigTab:CreateParagraph({
-            Title = "About Configs",
-            Content = "Save and load your settings easily. Configs are stored locally on your executor."
-        })
-        
-        ConfigTab:CreateDivider()
-        
-        local configName = ""
-        
-        ConfigTab:CreateTextbox({
-            Name = "Config Name",
-            Placeholder = "Enter config name...",
-            Callback = function(text)
-                configName = text
-            end
-        })
-        
-        ConfigTab:CreateButton({
-            Name = "💾 Save Config",
-            Callback = function()
-                if configName ~= "" then
-                    self:SaveConfig(configName)
-                else
-                    CreateNotification({
-                        Title = "Error",
-                        Content = "Please enter a config name first!",
-                        Duration = 3,
-                        Type = "Error"
-                    })
-                end
-            end
-        })
-        
-        ConfigTab:CreateDivider()
-        
-        local configList = self:GetConfigs()
-        local selectedConfig = configList[1] or "None"
-        
-        local configDropdown = ConfigTab:CreateDropdown({
-            Name = "Select Config",
-            Options = #configList > 0 and configList or {"No configs found"},
-            Default = selectedConfig,
-            Callback = function(selected)
-                selectedConfig = selected
-            end
-        })
-        
-        ConfigTab:CreateButton({
-            Name = "📂 Load Config",
-            Callback = function()
-                if selectedConfig and selectedConfig ~= "No configs found" then
-                    self:LoadConfig(selectedConfig)
-                else
-                    CreateNotification({
-                        Title = "Error",
-                        Content = "No config selected!",
-                        Duration = 3,
-                        Type = "Error"
-                    })
-                end
-            end
-        })
-        
-        ConfigTab:CreateButton({
-            Name = "🗑️ Delete Config",
-            Callback = function()
-                if selectedConfig and selectedConfig ~= "No configs found" then
-                    self:DeleteConfig(selectedConfig)
-                    
-                    -- Refresh dropdown
-                    local newConfigList = self:GetConfigs()
-                    configDropdown:Refresh(#newConfigList > 0 and newConfigList or {"No configs found"})
-                else
-                    CreateNotification({
-                        Title = "Error",
-                        Content = "No config selected!",
-                        Duration = 3,
-                        Type = "Error"
-                    })
-                end
-            end
-        })
-        
-        ConfigTab:CreateButton({
-            Name = "🔄 Refresh List",
-            Callback = function()
-                local newConfigList = self:GetConfigs()
-                configDropdown:Refresh(#newConfigList > 0 and newConfigList or {"No configs found"})
-                CreateNotification({
-                    Title = "Refreshed",
-                    Content = "Config list has been refreshed!",
-                    Duration = 2,
-                    Type = "Success"
-                })
-            end
-        })
-        
-        ConfigTab:CreateDivider()
-        
-        ConfigTab:CreateLabel("💡 Tip: Configs auto-save all your settings including toggles, sliders, and dropdowns.")
-    end
-    
     return Window
+end
+
+-- ═══════════════════════════════════════════════
+-- FluxUI:Destroy() — Clean unload (#16)
+-- ═══════════════════════════════════════════════
+function FluxUI:Destroy()
+    FluxUI._destroyed = true
+    
+    -- Disconnect all tracked connections
+    for _, conn in ipairs(FluxUI._connections) do
+        pcall(function() conn:Disconnect() end)
+    end
+    FluxUI._connections = {}
+    
+    -- Clear all update functions
+    for id in pairs(UpdateFunctions) do
+        UpdateFunctions[id] = nil
+    end
+    
+    -- Destroy all ScreenGuis
+    for _, gui in ipairs(FluxUI._screenGuis) do
+        pcall(function() gui:Destroy() end)
+    end
+    FluxUI._screenGuis = {}
+    
+    -- Destroy tooltip if active
+    if Tooltip then
+        pcall(function() Tooltip:Destroy() end)
+        Tooltip = nil
+    end
+    
+    -- Clear config system
+    ConfigSystem.CurrentConfig = {}
+    ConfigSystem.Flags = {}
+    ConfigSystem.Initialized = false
+    
+    -- Clear notification holder
+    NotificationHolder = nil
 end
 
 return FluxUI
