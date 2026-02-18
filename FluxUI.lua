@@ -1,3 +1,12 @@
+-- Thread Identity Elevation (required for Velocity and similar executors)
+if setthreadidentity then
+    setthreadidentity(8)
+elseif setidentity then
+    setidentity(8)
+elseif setthreadcontext then
+    setthreadcontext(8)
+end
+
 local FluxUI = {}
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
