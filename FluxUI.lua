@@ -295,6 +295,158 @@ local function CreateScreenGui(name)
     return screenGui
 end
 
+-- Theme System (Module Level)
+    local Themes = {
+        Modern = {
+            Background = Color3.fromRGB(15, 15, 20),
+            Secondary = Color3.fromRGB(25, 25, 30),
+            Tertiary = Color3.fromRGB(35, 35, 40),
+            Accent = Color3.fromRGB(0, 122, 255),
+            AccentHover = Color3.fromRGB(10, 132, 255),
+            Text = Color3.fromRGB(255, 255, 255),
+            TextDim = Color3.fromRGB(150, 150, 160),
+            Border = Color3.fromRGB(50, 50, 60),
+            AccentGradient = {Color3.fromRGB(0, 122, 255), Color3.fromRGB(0, 200, 255)}
+        },
+        Dark = {
+            Background = Color3.fromRGB(20, 20, 25),
+            Secondary = Color3.fromRGB(30, 30, 35),
+            Tertiary = Color3.fromRGB(40, 40, 45),
+            Accent = Color3.fromRGB(88, 101, 242),
+            AccentHover = Color3.fromRGB(108, 121, 255),
+            Text = Color3.fromRGB(255, 255, 255),
+            TextDim = Color3.fromRGB(180, 180, 190),
+            Border = Color3.fromRGB(60, 60, 70),
+            AccentGradient = {Color3.fromRGB(88, 101, 242), Color3.fromRGB(140, 100, 255)}
+        },
+        Light = {
+            Background = Color3.fromRGB(245, 245, 250),
+            Secondary = Color3.fromRGB(255, 255, 255),
+            Tertiary = Color3.fromRGB(235, 235, 240),
+            Accent = Color3.fromRGB(88, 101, 242),
+            AccentHover = Color3.fromRGB(108, 121, 255),
+            Text = Color3.fromRGB(20, 20, 25),
+            TextDim = Color3.fromRGB(100, 100, 110),
+            Border = Color3.fromRGB(220, 220, 230),
+            AccentGradient = {Color3.fromRGB(88, 101, 242), Color3.fromRGB(120, 130, 255)}
+        },
+        Purple = {
+            Background = Color3.fromRGB(25, 20, 35),
+            Secondary = Color3.fromRGB(35, 28, 50),
+            Tertiary = Color3.fromRGB(50, 40, 70),
+            Accent = Color3.fromRGB(138, 43, 226),
+            AccentHover = Color3.fromRGB(160, 80, 255),
+            Text = Color3.fromRGB(255, 255, 255),
+            TextDim = Color3.fromRGB(190, 170, 210),
+            Border = Color3.fromRGB(80, 60, 100),
+            AccentGradient = {Color3.fromRGB(138, 43, 226), Color3.fromRGB(200, 80, 255)}
+        },
+        Ocean = {
+            Background = Color3.fromRGB(15, 25, 35),
+            Secondary = Color3.fromRGB(20, 35, 50),
+            Tertiary = Color3.fromRGB(30, 50, 70),
+            Accent = Color3.fromRGB(0, 150, 200),
+            AccentHover = Color3.fromRGB(50, 180, 230),
+            Text = Color3.fromRGB(255, 255, 255),
+            TextDim = Color3.fromRGB(150, 190, 210),
+            Border = Color3.fromRGB(50, 80, 110),
+            AccentGradient = {Color3.fromRGB(0, 150, 200), Color3.fromRGB(0, 220, 180)}
+        },
+        Sunset = {
+            Background = Color3.fromRGB(30, 20, 20),
+            Secondary = Color3.fromRGB(45, 30, 30),
+            Tertiary = Color3.fromRGB(60, 40, 40),
+            Accent = Color3.fromRGB(255, 100, 50),
+            AccentHover = Color3.fromRGB(255, 130, 80),
+            Text = Color3.fromRGB(255, 255, 255),
+            TextDim = Color3.fromRGB(220, 180, 170),
+            Border = Color3.fromRGB(100, 60, 50),
+            AccentGradient = {Color3.fromRGB(255, 80, 50), Color3.fromRGB(255, 180, 40)}
+        },
+        Rose = {
+            Background = Color3.fromRGB(30, 20, 25),
+            Secondary = Color3.fromRGB(45, 30, 38),
+            Tertiary = Color3.fromRGB(60, 40, 50),
+            Accent = Color3.fromRGB(255, 80, 120),
+            AccentHover = Color3.fromRGB(255, 120, 150),
+            Text = Color3.fromRGB(255, 255, 255),
+            TextDim = Color3.fromRGB(220, 180, 195),
+            Border = Color3.fromRGB(100, 60, 75),
+            AccentGradient = {Color3.fromRGB(255, 80, 120), Color3.fromRGB(255, 150, 180)}
+        },
+        Emerald = {
+            Background = Color3.fromRGB(18, 28, 22),
+            Secondary = Color3.fromRGB(25, 40, 32),
+            Tertiary = Color3.fromRGB(35, 55, 45),
+            Accent = Color3.fromRGB(50, 205, 100),
+            AccentHover = Color3.fromRGB(80, 230, 130),
+            Text = Color3.fromRGB(255, 255, 255),
+            TextDim = Color3.fromRGB(170, 210, 185),
+            Border = Color3.fromRGB(55, 85, 65),
+            AccentGradient = {Color3.fromRGB(50, 205, 100), Color3.fromRGB(0, 255, 150)}
+        },
+        Midnight = {
+            Background = Color3.fromRGB(10, 10, 20),
+            Secondary = Color3.fromRGB(18, 18, 35),
+            Tertiary = Color3.fromRGB(28, 28, 50),
+            Accent = Color3.fromRGB(100, 100, 255),
+            AccentHover = Color3.fromRGB(130, 130, 255),
+            Text = Color3.fromRGB(255, 255, 255),
+            TextDim = Color3.fromRGB(150, 150, 200),
+            Border = Color3.fromRGB(50, 50, 80),
+            AccentGradient = {Color3.fromRGB(80, 80, 255), Color3.fromRGB(150, 100, 255)}
+        }
+    }
+
+    -- Build theme name list
+    FluxUI.Themes = {}
+    for name in pairs(Themes) do
+        table.insert(FluxUI.Themes, name)
+    end
+    table.sort(FluxUI.Themes)
+
+    -- Custom Theme Builder (#3)
+    function FluxUI:AddTheme(name, colorTable)
+        local required = {"Background", "Secondary", "Tertiary", "Accent", "AccentHover", "Text", "TextDim", "Border"}
+        for _, key in ipairs(required) do
+            if not colorTable[key] then
+                warn("FluxUI:AddTheme - Missing required key: " .. key)
+                return false
+            end
+        end
+        Themes[name] = colorTable
+        table.insert(FluxUI.Themes, name)
+        return true
+    end
+
+    -- Apply Accent Gradient Utility (#1)
+    local function ApplyAccentGradient(object, colors)
+        if not colors or not colors.AccentGradient then return nil end
+        local gradient = Instance.new("UIGradient")
+        gradient.Color = ColorSequence.new(colors.AccentGradient[1], colors.AccentGradient[2])
+        gradient.Rotation = 45
+        gradient.Parent = object
+        return gradient
+    end
+
+    -- Themed Element Registry (for animated switching #2)
+    -- Stores { object, property, themeKey } entries so SetTheme can tween them all
+    local ThemedElements = {}
+
+    local function RegisterThemedElement(object, property, themeKey)
+        if type(object) == "function" then
+            table.insert(ThemedElements, {fn = object})
+        else
+            table.insert(ThemedElements, {object = object, property = property, themeKey = themeKey})
+        end
+    end
+
+    -- Initialize Global Colors
+    FluxUI.Colors = {}
+    for k, v in pairs(Themes.Modern) do FluxUI.Colors[k] = v end
+    local Colors = FluxUI.Colors
+
+
 -- Notification System
 local NotificationHolder = nil
 
@@ -604,153 +756,7 @@ function FluxUI:Notify(config)
     CreateNotification(config)
 end
 
--- ═══════════════════════════════════════════════
--- Theme System (Module Level)
--- ═══════════════════════════════════════════════
-local Themes = {
-    Modern = {
-        Background = Color3.fromRGB(15, 15, 20),
-        Secondary = Color3.fromRGB(25, 25, 30),
-        Tertiary = Color3.fromRGB(35, 35, 40),
-        Accent = Color3.fromRGB(0, 122, 255),
-        AccentHover = Color3.fromRGB(10, 132, 255),
-        Text = Color3.fromRGB(255, 255, 255),
-        TextDim = Color3.fromRGB(150, 150, 160),
-        Border = Color3.fromRGB(50, 50, 60),
-        AccentGradient = {Color3.fromRGB(0, 122, 255), Color3.fromRGB(0, 200, 255)}
-    },
-    Dark = {
-        Background = Color3.fromRGB(20, 20, 25),
-        Secondary = Color3.fromRGB(30, 30, 35),
-        Tertiary = Color3.fromRGB(40, 40, 45),
-        Accent = Color3.fromRGB(88, 101, 242),
-        AccentHover = Color3.fromRGB(108, 121, 255),
-        Text = Color3.fromRGB(255, 255, 255),
-        TextDim = Color3.fromRGB(180, 180, 190),
-        Border = Color3.fromRGB(60, 60, 70),
-        AccentGradient = {Color3.fromRGB(88, 101, 242), Color3.fromRGB(140, 100, 255)}
-    },
-    Light = {
-        Background = Color3.fromRGB(245, 245, 250),
-        Secondary = Color3.fromRGB(255, 255, 255),
-        Tertiary = Color3.fromRGB(235, 235, 240),
-        Accent = Color3.fromRGB(88, 101, 242),
-        AccentHover = Color3.fromRGB(108, 121, 255),
-        Text = Color3.fromRGB(20, 20, 25),
-        TextDim = Color3.fromRGB(100, 100, 110),
-        Border = Color3.fromRGB(220, 220, 230),
-        AccentGradient = {Color3.fromRGB(88, 101, 242), Color3.fromRGB(120, 130, 255)}
-    },
-    Purple = {
-        Background = Color3.fromRGB(25, 20, 35),
-        Secondary = Color3.fromRGB(35, 28, 50),
-        Tertiary = Color3.fromRGB(50, 40, 70),
-        Accent = Color3.fromRGB(138, 43, 226),
-        AccentHover = Color3.fromRGB(160, 80, 255),
-        Text = Color3.fromRGB(255, 255, 255),
-        TextDim = Color3.fromRGB(190, 170, 210),
-        Border = Color3.fromRGB(80, 60, 100),
-        AccentGradient = {Color3.fromRGB(138, 43, 226), Color3.fromRGB(200, 80, 255)}
-    },
-    Ocean = {
-        Background = Color3.fromRGB(15, 25, 35),
-        Secondary = Color3.fromRGB(20, 35, 50),
-        Tertiary = Color3.fromRGB(30, 50, 70),
-        Accent = Color3.fromRGB(0, 150, 200),
-        AccentHover = Color3.fromRGB(50, 180, 230),
-        Text = Color3.fromRGB(255, 255, 255),
-        TextDim = Color3.fromRGB(150, 190, 210),
-        Border = Color3.fromRGB(50, 80, 110),
-        AccentGradient = {Color3.fromRGB(0, 150, 200), Color3.fromRGB(0, 220, 180)}
-    },
-    Sunset = {
-        Background = Color3.fromRGB(30, 20, 20),
-        Secondary = Color3.fromRGB(45, 30, 30),
-        Tertiary = Color3.fromRGB(60, 40, 40),
-        Accent = Color3.fromRGB(255, 100, 50),
-        AccentHover = Color3.fromRGB(255, 130, 80),
-        Text = Color3.fromRGB(255, 255, 255),
-        TextDim = Color3.fromRGB(220, 180, 170),
-        Border = Color3.fromRGB(100, 60, 50),
-        AccentGradient = {Color3.fromRGB(255, 80, 50), Color3.fromRGB(255, 180, 40)}
-    },
-    Rose = {
-        Background = Color3.fromRGB(30, 20, 25),
-        Secondary = Color3.fromRGB(45, 30, 38),
-        Tertiary = Color3.fromRGB(60, 40, 50),
-        Accent = Color3.fromRGB(255, 80, 120),
-        AccentHover = Color3.fromRGB(255, 120, 150),
-        Text = Color3.fromRGB(255, 255, 255),
-        TextDim = Color3.fromRGB(220, 180, 195),
-        Border = Color3.fromRGB(100, 60, 75),
-        AccentGradient = {Color3.fromRGB(255, 80, 120), Color3.fromRGB(255, 150, 180)}
-    },
-    Emerald = {
-        Background = Color3.fromRGB(18, 28, 22),
-        Secondary = Color3.fromRGB(25, 40, 32),
-        Tertiary = Color3.fromRGB(35, 55, 45),
-        Accent = Color3.fromRGB(50, 205, 100),
-        AccentHover = Color3.fromRGB(80, 230, 130),
-        Text = Color3.fromRGB(255, 255, 255),
-        TextDim = Color3.fromRGB(170, 210, 185),
-        Border = Color3.fromRGB(55, 85, 65),
-        AccentGradient = {Color3.fromRGB(50, 205, 100), Color3.fromRGB(0, 255, 150)}
-    },
-    Midnight = {
-        Background = Color3.fromRGB(10, 10, 20),
-        Secondary = Color3.fromRGB(18, 18, 35),
-        Tertiary = Color3.fromRGB(28, 28, 50),
-        Accent = Color3.fromRGB(100, 100, 255),
-        AccentHover = Color3.fromRGB(130, 130, 255),
-        Text = Color3.fromRGB(255, 255, 255),
-        TextDim = Color3.fromRGB(150, 150, 200),
-        Border = Color3.fromRGB(50, 50, 80),
-        AccentGradient = {Color3.fromRGB(80, 80, 255), Color3.fromRGB(150, 100, 255)}
-    }
-}
 
--- Build theme name list
-FluxUI.Themes = {}
-for name in pairs(Themes) do
-    table.insert(FluxUI.Themes, name)
-end
-table.sort(FluxUI.Themes)
-
--- Custom Theme Builder (#3)
-function FluxUI:AddTheme(name, colorTable)
-    local required = {"Background", "Secondary", "Tertiary", "Accent", "AccentHover", "Text", "TextDim", "Border"}
-    for _, key in ipairs(required) do
-        if not colorTable[key] then
-            warn("FluxUI:AddTheme - Missing required key: " .. key)
-            return false
-        end
-    end
-    Themes[name] = colorTable
-    table.insert(FluxUI.Themes, name)
-    return true
-end
-
--- Apply Accent Gradient Utility (#1)
-local function ApplyAccentGradient(object, colors)
-    if not colors or not colors.AccentGradient then return nil end
-    local gradient = Instance.new("UIGradient")
-    gradient.Color = ColorSequence.new(colors.AccentGradient[1], colors.AccentGradient[2])
-    gradient.Rotation = 45
-    gradient.Parent = object
-    return gradient
-end
-
--- Themed Element Registry (for animated switching #2)
--- Stores { object, property, themeKey } entries so SetTheme can tween them all
-local ThemedElements = {}
-
-local function RegisterThemedElement(object, property, themeKey)
-    if type(object) == "function" then
-        table.insert(ThemedElements, {fn = object})
-    else
-        table.insert(ThemedElements, {object = object, property = property, themeKey = themeKey})
-    end
-end
 
 -- Main Window Class
 function FluxUI:CreateWindow(config)
@@ -769,7 +775,12 @@ function FluxUI:CreateWindow(config)
         Theme = theme
     }
     
-    local Colors = Themes[theme]
+    local Colors = FluxUI.Colors
+    -- Sync Global Colors to Requested Theme
+    local selectedTheme = Themes[theme] or Themes.Modern
+    for k, v in pairs(selectedTheme) do
+        Colors[k] = v
+    end
     
     -- Create ScreenGui
     local ScreenGui = CreateScreenGui("FluxUI")
