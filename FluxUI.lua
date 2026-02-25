@@ -1,12 +1,3 @@
--- Thread Identity Elevation (required for Velocity and similar executors)
-if setthreadidentity then
-    setthreadidentity(8)
-elseif setidentity then
-    setidentity(8)
-elseif setthreadcontext then
-    setthreadcontext(8)
-end
-
 local FluxUI = {}
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
@@ -16,14 +7,9 @@ pcall(function() CoreGui = game:GetService("CoreGui") end)
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 
--- ═══════════════════════════════════════════════
--- Performance Infrastructure
--- ═══════════════════════════════════════════════
-
--- Connection Cleanup Table (#13)
-FluxUI._connections = {}    -- All global connections
-FluxUI._screenGuis = {}     -- All created ScreenGuis
-FluxUI._destroyed = false   -- Destroy flag
+FluxUI._connections = {}    
+FluxUI._screenGuis = {}     
+FluxUI._destroyed = false   
 
 local function TrackConnection(conn)
     if conn then
@@ -32,9 +18,7 @@ local function TrackConnection(conn)
     return conn
 end
 
--- Central Update Loop (#14)
--- Components register functions here instead of creating individual RenderStepped connections
-local UpdateFunctions = {} -- { [id] = { fn = function, active = true, frames = 0, interval = 2 } }
+local UpdateFunctions = {}
 local updateIdCounter = 0
 
 local function RegisterUpdate(fn, interval)
@@ -56,7 +40,6 @@ local function SetUpdateActive(id, active)
     end
 end
 
--- Single heartbeat connection for ALL per-frame updates
 local _heartbeatConn = TrackConnection(RunService.Heartbeat:Connect(function()
     if FluxUI._destroyed then return end
     for id, entry in pairs(UpdateFunctions) do
@@ -66,7 +49,6 @@ local _heartbeatConn = TrackConnection(RunService.Heartbeat:Connect(function()
                 entry.frames = 0
                 local ok, err = pcall(entry.fn)
                 if not ok then
-                    -- Auto-remove broken update functions
                     UpdateFunctions[id] = nil
                 end
             end
@@ -74,7 +56,6 @@ local _heartbeatConn = TrackConnection(RunService.Heartbeat:Connect(function()
     end
 end))
 
--- Batch Tween Utility (#18)
 local function BatchTween(tweens, duration, style, direction)
     style = style or Enum.EasingStyle.Quad
     direction = direction or Enum.EasingDirection.Out
@@ -85,7 +66,6 @@ local function BatchTween(tweens, duration, style, direction)
     end
 end
 
--- Config System
 local ConfigFolder = "FluxUI_Configs"
 local ConfigSystem = {
     CurrentConfig = {},
@@ -93,7 +73,6 @@ local ConfigSystem = {
     Initialized = false
 }
 
--- Initialize Config System
 local function InitializeConfigSystem()
     if not ConfigSystem.Initialized then
         ConfigSystem.CurrentConfig = {}
@@ -102,7 +81,6 @@ local function InitializeConfigSystem()
     end
 end
 
--- Utility Functions
 local function Tween(object, properties, duration, style, direction)
     style = style or Enum.EasingStyle.Quad
     direction = direction or Enum.EasingDirection.Out
@@ -113,7 +91,6 @@ local function Tween(object, properties, duration, style, direction)
     return tween
 end
 
--- UI Utilities
 local function MakeRipple(object)
     local Ripple = Instance.new("Frame")
     Ripple.Name = "Ripple"
@@ -123,7 +100,6 @@ local function MakeRipple(object)
     Ripple.ZIndex = object.ZIndex + 1
     Ripple.Parent = object
     
-    -- Calculate ripple size
     local mouse = UserInputService:GetMouseLocation()
     local objectAbsolutePosition = object.AbsolutePosition
     local objectAbsoluteSize = object.AbsoluteSize
@@ -142,7 +118,6 @@ local function MakeRipple(object)
     
     Ripple.Parent = object
     
-    -- Animate
     Tween(Ripple, {
         Size = UDim2.new(0, maxSize, 0, maxSize),
         Position = UDim2.new(0, x - maxSize/2, 0, y - maxSize/2),
@@ -194,7 +169,6 @@ local function AddTooltip(object, text)
         corner.CornerRadius = UDim.new(0, 4)
         corner.Parent = Tooltip
         
-        -- Follow mouse via central update loop
         tooltipUpdateId = RegisterUpdate(function()
             if not object or not object.Parent or not Tooltip or not Tooltip.Parent then
                 if tooltipUpdateId then UnregisterUpdate(tooltipUpdateId) tooltipUpdateId = nil end
@@ -202,9 +176,8 @@ local function AddTooltip(object, text)
             end
             local mouse = UserInputService:GetMouseLocation()
             Tooltip.Position = UDim2.fromOffset(mouse.X + 15, mouse.Y + 15)
-        end, 1) -- every frame for smooth tracking
+        end, 1) 
         
-        -- Cleanup on leave
         local leaveConn
         leaveConn = object.MouseLeave:Connect(function()
             if Tooltip then Tooltip:Destroy() Tooltip = nil end
@@ -214,7 +187,6 @@ local function AddTooltip(object, text)
     end)
 end
 
--- Safe callback wrapper
 local function SafeCallback(callback, ...)
     if callback and type(callback) == "function" then
         local success, err = pcall(callback, ...)
@@ -242,7 +214,6 @@ local function MakeDraggable(frame, dragHandle)
         }, 0.1, Enum.EasingStyle.Linear)
     end
     
-    -- Mouse Input
     dragHandle.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
@@ -270,7 +241,6 @@ local function MakeDraggable(frame, dragHandle)
     end)
 end
 
--- Create GUI Protection
 local function CreateScreenGui(name)
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = name or "FluxUI_" .. math.random(1000, 9999)
@@ -295,7 +265,6 @@ local function CreateScreenGui(name)
     return screenGui
 end
 
--- Theme System (Module Level)
     local Themes = {
         Modern = {
             Background = Color3.fromRGB(15, 15, 20),
