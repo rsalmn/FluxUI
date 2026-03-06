@@ -419,6 +419,66 @@ end
 -- Notification System
 local NotificationHolder = nil
 
+-- Notification Position Configuration
+local NotificationConfig = {
+    Position = "TopRight", -- Default: TopRight, Options: TopLeft, TopRight, BottomLeft, BottomRight
+    Offset = Vector2.new(10, 10),
+    Width = 300
+}
+
+-- Predefined position configurations
+local NotificationPositions = {
+    TopLeft = { Anchor = Vector2.new(0, 0), PosScale = UDim2.new(0, 0, 0, 0), Align = Enum.VerticalAlignment.Top },
+    TopRight = { Anchor = Vector2.new(1, 0), PosScale = UDim2.new(1, 0, 0, 0), Align = Enum.VerticalAlignment.Bottom },
+    BottomLeft = { Anchor = Vector2.new(0, 1), PosScale = UDim2.new(0, 0, 1, 0), Align = Enum.VerticalAlignment.Bottom },
+    BottomRight = { Anchor = Vector2.new(1, 1), PosScale = UDim2.new(1, 0, 1, 0), Align = Enum.VerticalAlignment.Bottom }
+}
+
+-- Update notification holder position
+local function UpdateNotificationHolderPosition()
+    if not NotificationHolder then return end
+    
+    local posConfig = NotificationPositions[NotificationConfig.Position] or NotificationPositions.TopRight
+    local offset = NotificationConfig.Offset
+    local width = NotificationConfig.Width
+    
+    -- Calculate position based on anchor point
+    local xPos, yPos
+    if NotificationConfig.Position == "TopLeft" then
+        xPos = offset.X
+        yPos = offset.Y
+    elseif NotificationConfig.Position == "TopRight" then
+        xPos = -width - offset.X
+        yPos = offset.Y
+    elseif NotificationConfig.Position == "BottomLeft" then
+        xPos = offset.X
+        yPos = -offset.Y
+    else -- BottomRight (default)
+        xPos = -width - offset.X
+        yPos = -offset.Y
+    end
+    
+    NotificationHolder.AnchorPoint = posConfig.Anchor
+    NotificationHolder.Position = UDim2.new(posConfig.PosScale.X.Scale, xPos, posConfig.PosScale.Y.Scale, yPos)
+    NotificationHolder.Size = UDim2.new(0, width, 1, 0)
+    
+    local listLayout = NotificationHolder:FindFirstChildOfClass("UIListLayout")
+    if listLayout then
+        listLayout.VerticalAlignment = posConfig.Align
+    end
+end
+
+-- Public function to set notification position
+function FluxUI:SetNotificationPosition(position, offset)
+    if NotificationPositions[position] then
+        NotificationConfig.Position = position
+    end
+    if offset then
+        NotificationConfig.Offset = offset
+    end
+    UpdateNotificationHolderPosition()
+end
+
 local function CreateNotification(config)
     config = config or {}
     local title = config.Title or "Notification"
@@ -430,16 +490,16 @@ local function CreateNotification(config)
         local screenGui = CreateScreenGui("FluxUI_Notifications")
         NotificationHolder = Instance.new("Frame")
         NotificationHolder.Name = "NotificationHolder"
-        NotificationHolder.Size = UDim2.new(0, 300, 1, 0)
-        NotificationHolder.Position = UDim2.new(1, -310, 0, 10)
         NotificationHolder.BackgroundTransparency = 1
         NotificationHolder.Parent = screenGui
         
         local NotifList = Instance.new("UIListLayout")
         NotifList.SortOrder = Enum.SortOrder.LayoutOrder
         NotifList.Padding = UDim.new(0, 10)
-        NotifList.VerticalAlignment = Enum.VerticalAlignment.Bottom
         NotifList.Parent = NotificationHolder
+        
+        -- Set initial position
+        UpdateNotificationHolderPosition()
     end
     
     local typeColors = {
@@ -726,6 +786,9 @@ function FluxUI:CreateWindow(config)
     local windowSize = config.Size or UDim2.new(0, 550, 0, 400)
     local theme = config.Theme or "Dark"
     local enableGlass = config.Glass or false
+    local enableResize = config.Resizable ~= false -- Default: true, set to false to disable
+    local minSize = config.MinSize or Vector2.new(400, 300)
+    local maxSize = config.MaxSize or Vector2.new(1920, 1080)
     
     -- Initialize Config System
     InitializeConfigSystem()
@@ -1266,6 +1329,84 @@ function FluxUI:CreateWindow(config)
     -- Make Draggable
     MakeDraggable(MainFrame, TopBar)
     
+    -- Resize functionality
+    if enableResize then
+        local ResizeHandle = Instance.new("TextButton")
+        ResizeHandle.Name = "ResizeHandle"
+        ResizeHandle.Size = UDim2.new(0, 20, 0, 20)
+        ResizeHandle.Position = UDim2.new(1, -20, 1, -20)
+        ResizeHandle.BackgroundTransparency = 1
+        ResizeHandle.Text = ""
+        ResizeHandle.AutoButtonColor = false
+        ResizeHandle.Parent = MainFrame
+        
+        -- Resize icon (diagonal lines)
+        local ResizeIcon = Instance.new("Frame")
+        ResizeIcon.Name = "ResizeIcon"
+        ResizeIcon.Size = UDim2.new(0, 12, 0, 12)
+        ResizeIcon.Position = UDim2.new(1, -16, 1, -16)
+        ResizeIcon.BackgroundTransparency = 1
+        ResizeIcon.Parent = MainFrame
+        
+        -- Draw diagonal resize lines
+        for i = 0, 2 do
+            local line = Instance.new("Frame")
+            line.Size = UDim2.new(0, 2, 0, 8)
+            line.Position = UDim2.new(0, i * 4, 0, 4 - i * 4)
+            line.BackgroundColor3 = Colors.TextDim
+            line.BackgroundTransparency = 0.5
+            line.BorderSizePixel = 0
+            line.Rotation = 45
+            line.Parent = ResizeIcon
+            RegisterThemedElement(line, "BackgroundColor3", "TextDim")
+        end
+        
+        local resizing = false
+        local resizeStartPos
+        local startSize
+        
+        ResizeHandle.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                resizing = true
+                resizeStartPos = input.Position
+                startSize = MainFrame.Size
+            end
+        end)
+        
+        ResizeHandle.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                resizing = false
+            end
+        end)
+        
+        TrackConnection(UserInputService.InputChanged:Connect(function(input)
+            if resizing and input.UserInputType == Enum.UserInputType.MouseMovement then
+                local delta = input.Position - resizeStartPos
+                local newWidth = math.clamp(startSize.X.Offset + delta.X, minSize.X, maxSize.X)
+                local newHeight = math.clamp(startSize.Y.Offset + delta.Y, minSize.Y, maxSize.Y)
+                
+                MainFrame.Size = UDim2.new(0, newWidth, 0, newHeight)
+            end
+        end))
+        
+        -- Hover effect for resize handle
+        ResizeHandle.MouseEnter:Connect(function()
+            for _, child in ipairs(ResizeIcon:GetChildren()) do
+                if child:IsA("Frame") then
+                    Tween(child, {BackgroundTransparency = 0.2}, 0.2)
+                end
+            end
+        end)
+        
+        ResizeHandle.MouseLeave:Connect(function()
+            for _, child in ipairs(ResizeIcon:GetChildren()) do
+                if child:IsA("Frame") then
+                    Tween(child, {BackgroundTransparency = 0.5}, 0.2)
+                end
+            end
+        end)
+    end
+    
     -- Intro Animation
     MainFrame.Size = UDim2.new(0, 0, 0, 0)
     Tween(MainFrame, {Size = windowSize}, 0.4, Enum.EasingStyle.Back)
@@ -1315,10 +1456,12 @@ function FluxUI:CreateWindow(config)
         BatchTween(tweens, 0.4)
     end
 
-    function Window:CreateTab(tabName, icon)
+    function Window:CreateTab(tabName, icon, lazyLoad)
         local Tab = {
             Name = tabName,
-            Elements = {}
+            Elements = {},
+            IsLazyLoaded = lazyLoad or false,
+            IsContentCreated = false
         }
         
         -- Tab Button
@@ -1357,42 +1500,75 @@ function FluxUI:CreateWindow(config)
             end
         end)
         
-        -- Tab Content
-        local TabContent = Instance.new("ScrollingFrame")
-        TabContent.Name = tabName .. "_Content"
-        TabContent.Size = UDim2.new(1, -20, 1, -20)
-        TabContent.Position = UDim2.new(0, 10, 0, 10)
-        TabContent.BackgroundTransparency = 1
-        TabContent.BorderSizePixel = 0
-        TabContent.ScrollBarThickness = 4
-        TabContent.ScrollBarImageColor3 = Colors.Accent
-        TabContent.CanvasSize = UDim2.new(0, 0, 0, 0)
-        TabContent.Visible = false
-        TabContent.Parent = ContentContainer
-        RegisterThemedElement(TabContent, "ScrollBarImageColor3", "Accent")
+        -- Tab Content (created immediately or lazily)
+        local TabContent, ContentList
+        local function CreateTabContent()
+            if Tab.IsContentCreated then return TabContent, ContentList end
+            
+            TabContent = Instance.new("ScrollingFrame")
+            TabContent.Name = tabName .. "_Content"
+            TabContent.Size = UDim2.new(1, -20, 1, -20)
+            TabContent.Position = UDim2.new(0, 10, 0, 10)
+            TabContent.BackgroundTransparency = 1
+            TabContent.BorderSizePixel = 0
+            TabContent.ScrollBarThickness = 4
+            TabContent.ScrollBarImageColor3 = Colors.Accent
+            TabContent.CanvasSize = UDim2.new(0, 0, 0, 0)
+            TabContent.Visible = false
+            TabContent.Parent = ContentContainer
+            RegisterThemedElement(TabContent, "ScrollBarImageColor3", "Accent")
+            
+            ContentList = Instance.new("UIListLayout")
+            ContentList.SortOrder = Enum.SortOrder.LayoutOrder
+            ContentList.Padding = UDim.new(0, 8)
+            ContentList.Parent = GetContentFrame()
+            
+            ContentList.Changed:Connect(function(prop)
+                if prop == "AbsoluteContentSize" then
+                    TabContent.CanvasSize = UDim2.new(0, 0, 0, ContentList.AbsoluteContentSize.Y + 10)
+                end
+            end)
+            
+            Tab.IsContentCreated = true
+            Tab.Content = TabContent
+            Tab.ContentList = ContentList
+            
+            return TabContent, ContentList
+        end
         
-        local ContentList = Instance.new("UIListLayout")
-        ContentList.SortOrder = Enum.SortOrder.LayoutOrder
-        ContentList.Padding = UDim.new(0, 8)
-        ContentList.Parent = TabContent
+        -- Create content immediately if not lazy loading
+        if not Tab.IsLazyLoaded then
+            CreateTabContent()
+        end
         
-        ContentList.Changed:Connect(function(prop)
-            if prop == "AbsoluteContentSize" then
-                TabContent.CanvasSize = UDim2.new(0, 0, 0, ContentList.AbsoluteContentSize.Y + 10)
-            end
-        end)
+        -- Lazy load callback storage
+        local lazyLoadCallbacks = {}
         
         -- Tab Button Click
         TabButton.MouseButton1Click:Connect(function()
+            -- Create content on first click if lazy loaded
+            if Tab.IsLazyLoaded and not Tab.IsContentCreated then
+                CreateTabContent()
+                -- Execute any pending lazy load callbacks
+                for _, callback in ipairs(lazyLoadCallbacks) do
+                    pcall(callback, Tab)
+                end
+                lazyLoadCallbacks = {}
+            end
+            
             for _, tab in pairs(Window.Tabs) do
                 Tween(tab.Button, {BackgroundColor3 = Colors.Tertiary}, 0.2)
                 Tween(tab.Label, {TextColor3 = Colors.TextDim}, 0.2)
-                tab.Content.Visible = false
+                if tab.Content then
+                    tab.Content.Visible = false
+                end
             end
             
             Tween(TabButton, {BackgroundColor3 = Colors.Accent}, 0.2)
             Tween(TabLabel, {TextColor3 = Colors.Text}, 0.2)
-            TabContent.Visible = true
+            if TabContent then
+                TabContent.Visible = true
+            end
             Window.CurrentTab = Tab
         end)
         
@@ -1411,17 +1587,35 @@ function FluxUI:CreateWindow(config)
         -- Store Tab References
         Tab.Button = TabButton
         Tab.Label = TabLabel
-        Tab.Content = TabContent
+        if TabContent then
+            Tab.Content = TabContent
+            Tab.ContentList = ContentList
+        end
         
         table.insert(Window.Tabs, Tab)
         
-        -- Select First Tab
+        -- Select First Tab (create content if lazy loaded and it's the first tab)
         if #Window.Tabs == 1 then
+            if Tab.IsLazyLoaded and not Tab.IsContentCreated then
+                CreateTabContent()
+            end
             TabButton.BackgroundColor3 = Colors.Accent
             TabLabel.TextColor3 = Colors.Text
-            TabContent.Visible = true
+            if TabContent then
+                TabContent.Visible = true
+            end
             Window.CurrentTab = Tab
         end
+        
+        -- Function to add element with lazy loading support
+        local function GetContentFrame()
+            if not Tab.IsContentCreated then
+                CreateTabContent()
+            end
+            return TabContent
+        end
+        
+        Tab.GetContent = GetContentFrame
         
         -- Element Functions
         function Tab:CreateButton(config)
@@ -1434,7 +1628,7 @@ function FluxUI:CreateWindow(config)
             ButtonFrame.Size = UDim2.new(1, 0, 0, 40)
             ButtonFrame.BackgroundColor3 = Colors.Tertiary
             ButtonFrame.BorderSizePixel = 0
-            ButtonFrame.Parent = TabContent
+            ButtonFrame.Parent = GetContentFrame()
             
             AddStroke(ButtonFrame, Colors.Border, 1)
             AddTooltip(ButtonFrame, tooltipText)
@@ -1491,7 +1685,7 @@ function FluxUI:CreateWindow(config)
             ToggleFrame.Size = UDim2.new(1, 0, 0, 35)
             ToggleFrame.BackgroundColor3 = Colors.Background
             ToggleFrame.BorderSizePixel = 0
-            ToggleFrame.Parent = TabContent
+            ToggleFrame.Parent = GetContentFrame()
             
             local ToggleCorner = Instance.new("UICorner")
             ToggleCorner.CornerRadius = UDim.new(0, 6)
@@ -1592,6 +1786,24 @@ function FluxUI:CreateWindow(config)
             return toggleObj
         end
         
+        -- Utility function for precise decimal rounding
+        local function RoundToIncrement(value, increment)
+            if increment == 1 then
+                return math.floor(value + 0.5)
+            end
+            -- Handle decimal increments precisely
+            local precision = 0
+            local incStr = tostring(increment)
+            local dotPos = string.find(incStr, "%.")
+            if dotPos then
+                precision = #incStr - dotPos
+            end
+            local multiplier = 10 ^ precision
+            local rounded = math.floor((value / increment) + 0.5) * increment
+            -- Fix floating point precision issues
+            return math.floor(rounded * multiplier + 0.5) / multiplier
+        end
+
         function Tab:CreateSlider(config)
             config = config or {}
             local sliderText = config.Name or "Slider"
@@ -1606,7 +1818,7 @@ function FluxUI:CreateWindow(config)
             SliderFrame.Size = UDim2.new(1, 0, 0, 50)
             SliderFrame.BackgroundColor3 = Colors.Tertiary
             SliderFrame.BorderSizePixel = 0
-            SliderFrame.Parent = TabContent
+            SliderFrame.Parent = GetContentFrame()
             
             AddStroke(SliderFrame, Colors.Border, 1)
             
@@ -1730,7 +1942,8 @@ function FluxUI:CreateWindow(config)
                 local barPos = SliderBar.AbsolutePosition.X
                 local barSize = SliderBar.AbsoluteSize.X
                 local percentage = math.clamp((mousePos - barPos) / barSize, 0, 1)
-                local value = math.floor(min + (max - min) * percentage / increment + 0.5) * increment
+                local rawValue = min + (max - min) * percentage
+                local value = RoundToIncrement(rawValue, increment)
                 
                 SliderValue.Text = tostring(value)
                 Tween(SliderFill, {Size = UDim2.new(percentage, 0, 1, 0)}, 0.1)
@@ -1752,7 +1965,8 @@ function FluxUI:CreateWindow(config)
                     local barPos = SliderBar.AbsolutePosition.X
                     local barSize = SliderBar.AbsoluteSize.X
                     local percentage = math.clamp((mousePos - barPos) / barSize, 0, 1)
-                    local value = math.floor(min + (max - min) * percentage / increment + 0.5) * increment
+                    local rawValue = min + (max - min) * percentage
+                    local value = RoundToIncrement(rawValue, increment)
                     
                     SliderValue.Text = tostring(value)
                     SliderFill.Size = UDim2.new(percentage, 0, 1, 0)
@@ -1768,6 +1982,7 @@ function FluxUI:CreateWindow(config)
             local sliderObj = {
                 SetValue = function(value)
                     value = math.clamp(value, min, max)
+                    value = RoundToIncrement(value, increment)
                     local percentage = (value - min) / (max - min)
                     SliderValue.Text = tostring(value)
                     SliderFill.Size = UDim2.new(percentage, 0, 1, 0)
@@ -1822,7 +2037,7 @@ function FluxUI:CreateWindow(config)
             TextboxFrame.Size = UDim2.new(1, 0, 0, 40)
             TextboxFrame.BackgroundColor3 = Colors.Tertiary
             TextboxFrame.BorderSizePixel = 0
-            TextboxFrame.Parent = TabContent
+            TextboxFrame.Parent = GetContentFrame()
             
             AddStroke(TextboxFrame, Colors.Border, 1)
             AddTooltip(TextboxFrame, tooltipText)
@@ -1926,7 +2141,7 @@ function FluxUI:CreateWindow(config)
             KeybindFrame.Size = UDim2.new(1, 0, 0, 40)
             KeybindFrame.BackgroundColor3 = Colors.Tertiary
             KeybindFrame.BorderSizePixel = 0
-            KeybindFrame.Parent = TabContent
+            KeybindFrame.Parent = GetContentFrame()
             
             local KeybindCorner = Instance.new("UICorner")
             KeybindCorner.CornerRadius = UDim.new(0, 8)
@@ -2052,7 +2267,7 @@ function FluxUI:CreateWindow(config)
             ColorFrame.BackgroundColor3 = Colors.Tertiary
             ColorFrame.BorderSizePixel = 0
             ColorFrame.ClipsDescendants = true
-            ColorFrame.Parent = TabContent
+            ColorFrame.Parent = GetContentFrame()
             
             AddStroke(ColorFrame, Colors.Border, 1)
             AddTooltip(ColorFrame, tooltipText)
@@ -2324,6 +2539,128 @@ function FluxUI:CreateWindow(config)
         end
         
         -- ═══════════════════════════════════════════
+        -- VIRTUAL SCROLLING UTILITY
+        -- ═══════════════════════════════════════════
+        local function CreateVirtualScroller(container, itemHeight, visibleCount)
+            local VirtualScroller = {}
+            local itemCache = {}
+            local visibleItems = {}
+            local totalItems = 0
+            local scrollPosition = 0
+            
+            -- Create the scrolling frame
+            local ScrollingFrame = Instance.new("ScrollingFrame")
+            ScrollingFrame.Size = UDim2.new(1, 0, 1, 0)
+            ScrollingFrame.BackgroundTransparency = 1
+            ScrollingFrame.BorderSizePixel = 0
+            ScrollingFrame.ScrollBarThickness = 4
+            ScrollingFrame.ScrollBarImageColor3 = Colors.Accent
+            ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+            ScrollingFrame.Parent = container
+            
+            RegisterThemedElement(ScrollingFrame, "ScrollBarImageColor3", "Accent")
+            
+            -- Content container
+            local ContentFrame = Instance.new("Frame")
+            ContentFrame.Size = UDim2.new(1, 0, 0, 0)
+            ContentFrame.BackgroundTransparency = 1
+            ContentFrame.Parent = ScrollingFrame
+            
+            local ContentLayout = Instance.new("UIListLayout")
+            ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+            ContentLayout.Padding = UDim.new(0, 2)
+            ContentLayout.Parent = ContentFrame
+            
+            -- Pool for reusing items
+            local function getPooledItem()
+                for _, item in ipairs(itemCache) do
+                    if not item.Visible then
+                        item.Visible = true
+                        return item
+                    end
+                end
+                return nil
+            end
+            
+            local function createItemFrame(index)
+                local ItemFrame = Instance.new("TextButton")
+                ItemFrame.Size = UDim2.new(1, 0, 0, itemHeight)
+                ItemFrame.BackgroundTransparency = 1
+                ItemFrame.Text = ""
+                ItemFrame.AutoButtonColor = false
+                ItemFrame.LayoutOrder = index
+                ItemFrame.Visible = false
+                ItemFrame.Parent = ContentFrame
+                
+                return ItemFrame
+            end
+            
+            function VirtualScroller:SetData(data, createCallback, updateCallback)
+                totalItems = #data
+                ContentFrame.Size = UDim2.new(1, 0, 0, totalItems * (itemHeight + 2))
+                
+                -- Clear existing visible items
+                for _, item in pairs(visibleItems) do
+                    item.Visible = false
+                end
+                visibleItems = {}
+                
+                -- Calculate visible range
+                local scrollY = ScrollingFrame.CanvasPosition.Y
+                local startIndex = math.floor(scrollY / (itemHeight + 2)) + 1
+                local endIndex = math.min(startIndex + visibleCount + 1, totalItems)
+                
+                -- Create/update visible items
+                for i = startIndex, endIndex do
+                    local itemData = data[i]
+                    if itemData then
+                        local itemFrame = getPooledItem() or createItemFrame(i)
+                        itemFrame.LayoutOrder = i
+                        itemFrame.Visible = true
+                        
+                        if updateCallback then
+                            updateCallback(itemFrame, itemData, i)
+                        end
+                        
+                        visibleItems[i] = itemFrame
+                    end
+                end
+            end
+            
+            -- Optimized scroll handler
+            local scrollConnection = ScrollingFrame:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+                local scrollY = ScrollingFrame.CanvasPosition.Y
+                local startIndex = math.floor(scrollY / (itemHeight + 2)) + 1
+                local endIndex = math.min(startIndex + visibleCount + 1, totalItems)
+                
+                -- Hide items that are no longer visible
+                for index, item in pairs(visibleItems) do
+                    if index < startIndex or index > endIndex then
+                        item.Visible = false
+                        visibleItems[index] = nil
+                    end
+                end
+                
+                -- Show items that are now visible
+                for i = startIndex, endIndex do
+                    if not visibleItems[i] then
+                        -- Create or reuse item frame
+                    end
+                end
+            end)
+            
+            function VirtualScroller:Destroy()
+                scrollConnection:Disconnect()
+                ScrollingFrame:Destroy()
+                itemCache = {}
+                visibleItems = {}
+            end
+            
+            VirtualScroller.ScrollingFrame = ScrollingFrame
+            return VirtualScroller
+        end
+
+        -- ═══════════════════════════════════════════
         -- MODERN DROPDOWN (Unified: Single, Multi, Search)
         -- ═══════════════════════════════════════════
         function Tab:CreateDropdown(config)
@@ -2361,7 +2698,7 @@ function FluxUI:CreateWindow(config)
             Container.Name = "Dropdown_" .. dropdownText
             Container.Size = UDim2.new(1, 0, 0, 40)
             Container.BackgroundTransparency = 1
-            Container.Parent = TabContent
+            Container.Parent = GetContentFrame()
             
             -- Dropdown Button
             local DropdownButton = Instance.new("TextButton")
@@ -3089,7 +3426,7 @@ function FluxUI:CreateWindow(config)
             local LabelFrame = Instance.new("Frame")
             LabelFrame.Size = UDim2.new(1, 0, 0, 30)
             LabelFrame.BackgroundTransparency = 1
-            LabelFrame.Parent = TabContent
+            LabelFrame.Parent = GetContentFrame()
             
             local Label = Instance.new("TextLabel")
             Label.Size = UDim2.new(1, -20, 1, 0)
@@ -3123,7 +3460,7 @@ function FluxUI:CreateWindow(config)
             ParagraphFrame.Size = UDim2.new(1, 0, 0, 10)
             ParagraphFrame.BackgroundColor3 = Colors.Tertiary
             ParagraphFrame.BorderSizePixel = 0
-            ParagraphFrame.Parent = TabContent
+            ParagraphFrame.Parent = GetContentFrame()
             
             local ParagraphCorner = Instance.new("UICorner")
             ParagraphCorner.CornerRadius = UDim.new(0, 8)
@@ -3180,7 +3517,7 @@ function FluxUI:CreateWindow(config)
             local DividerFrame = Instance.new("Frame")
             DividerFrame.Size = UDim2.new(1, 0, 0, 20)
             DividerFrame.BackgroundTransparency = 1
-            DividerFrame.Parent = TabContent
+            DividerFrame.Parent = GetContentFrame()
             
             if text then
                 local DividerLabel = Instance.new("TextLabel")
@@ -3268,7 +3605,7 @@ function FluxUI:CreateWindow(config)
             ChartFrame.Size = UDim2.new(1, 0, 0, chartHeight + 50)
             ChartFrame.BackgroundColor3 = Colors.Tertiary
             ChartFrame.BorderSizePixel = 0
-            ChartFrame.Parent = TabContent
+            ChartFrame.Parent = GetContentFrame()
             
             local ChartCorner = Instance.new("UICorner")
             ChartCorner.CornerRadius = UDim.new(0, 8)
@@ -3455,7 +3792,7 @@ function FluxUI:CreateWindow(config)
             local SectionFrame = Instance.new("Frame")
             SectionFrame.Size = UDim2.new(1, 0, 0, 35)
             SectionFrame.BackgroundTransparency = 1
-            SectionFrame.Parent = TabContent
+            SectionFrame.Parent = GetContentFrame()
             
             local SectionLabel = Instance.new("TextLabel")
             SectionLabel.Size = UDim2.new(1, -10, 1, 0)
@@ -3503,7 +3840,7 @@ function FluxUI:CreateWindow(config)
             CollapsibleFrame.BackgroundColor3 = Colors.Tertiary
             CollapsibleFrame.BorderSizePixel = 0
             CollapsibleFrame.ClipsDescendants = true
-            CollapsibleFrame.Parent = TabContent
+            CollapsibleFrame.Parent = GetContentFrame()
             
             local CollapsibleCorner = Instance.new("UICorner")
             CollapsibleCorner.CornerRadius = UDim.new(0, 8)
@@ -3830,7 +4167,8 @@ function FluxUI:CreateWindow(config)
                 
                 local function updateSlider(input)
                     local percentage = math.clamp((input.Position.X - SliderBar.AbsolutePosition.X) / SliderBar.AbsoluteSize.X, 0, 1)
-                    local value = math.floor((min + (max - min) * percentage) / increment + 0.5) * increment
+                    local rawValue = min + (max - min) * percentage
+                    local value = RoundToIncrement(rawValue, increment)
                     value = math.clamp(value, min, max)
                     
                     currentValue = value
@@ -3857,6 +4195,7 @@ function FluxUI:CreateWindow(config)
                 local sliderObj = {
                     SetValue = function(value)
                         value = math.clamp(value, min, max)
+                        value = RoundToIncrement(value, increment)
                         currentValue = value
                         local percentage = (value - min) / (max - min)
                         SliderValue.Text = tostring(value)
